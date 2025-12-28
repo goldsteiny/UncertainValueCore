@@ -1,0 +1,316 @@
+//
+//  UncertainValueTests.swift
+//  UncertainValueCoreTests
+//
+//  Tests for UncertainValue arithmetic and array operations.
+//  All tests use explicit norm strategies (no operators).
+//
+
+import Testing
+@testable import UncertainValueCore
+
+struct UncertainValueTests {
+    // MARK: - Initialization Tests
+
+    @Test func initWithAbsoluteError() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+        #expect(x.value == 10.0)
+        #expect(x.absoluteError == 0.5)
+        #expect(x.relativeError == 0.05)
+    }
+
+    @Test func initWithRelativeError() {
+        let x = UncertainValue.withRelativeError(10.0, 0.05)
+        #expect(x.value == 10.0)
+        #expect(x.absoluteError == 0.5)
+        #expect(x.relativeError == 0.05)
+    }
+
+    @Test func initWithCombinedErrors() {
+        let x = UncertainValue.withCombinedErrors(10.0, absoluteError: 0.3, relativeError: 0.02)
+        #expect(x.value == 10.0)
+        // total = 0.3 + 10.0 * 0.02 = 0.5
+        #expect(x.absoluteError == 0.5)
+        #expect(x.relativeError == 0.05)
+    }
+
+    @Test func negativeAbsoluteErrorIsAbsoluted() {
+        let x = UncertainValue(10.0, absoluteError: -0.5)
+        #expect(x.absoluteError == 0.5)
+    }
+
+    @Test func zeroValueWithErrorHasInfiniteRelativeError() {
+        let x = UncertainValue(0.0, absoluteError: 0.5)
+        #expect(x.relativeError == .infinity)
+    }
+
+    @Test func zeroValueWithZeroErrorHasZeroRelativeError() {
+        let x = UncertainValue(0.0, absoluteError: 0.0)
+        #expect(x.relativeError == 0.0)
+    }
+
+    @Test func variance() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+        #expect(x.variance == 0.25)
+    }
+
+    // MARK: - Arithmetic Tests (explicit norm)
+
+    @Test func addition() {
+        let x = UncertainValue(10.0, absoluteError: 0.3)
+        let y = UncertainValue(5.0, absoluteError: 0.4)
+        let result = x.adding(y, using: .l2)
+
+        #expect(result.value == 15.0)
+        // L2: sqrt(0.3^2 + 0.4^2) = sqrt(0.25) = 0.5
+        #expect(abs(result.absoluteError - 0.5) < 0.0001)
+    }
+
+    @Test func subtraction() {
+        let x = UncertainValue(10.0, absoluteError: 0.3)
+        let y = UncertainValue(5.0, absoluteError: 0.4)
+        let result = x.subtracting(y, using: .l2)
+
+        #expect(result.value == 5.0)
+        #expect(abs(result.absoluteError - 0.5) < 0.0001)
+    }
+
+    @Test func multiplication() {
+        let x = UncertainValue.withRelativeError(10.0, 0.05)
+        let y = UncertainValue.withRelativeError(5.0, 0.04)
+        let result = x.multiplying(y, using: .l2)
+
+        #expect(result.value == 50.0)
+        // L2: sqrt(0.05^2 + 0.04^2) ≈ 0.0640
+        #expect(abs(result.relativeError - 0.0640) < 0.001)
+    }
+
+    @Test func division() {
+        let x = UncertainValue.withRelativeError(10.0, 0.05)
+        let y = UncertainValue.withRelativeError(5.0, 0.04)
+        let result = x.dividing(by: y, using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 2.0)
+        #expect(abs(result!.relativeError - 0.0640) < 0.001)
+    }
+
+    @Test func divisionByZeroReturnsNil() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+        let zero = UncertainValue(0.0, absoluteError: 0.0)
+        #expect(x.dividing(by: zero, using: .l2) == nil)
+    }
+
+    @Test func power() {
+        let x = UncertainValue.withRelativeError(10.0, 0.05)
+        let result = x.raised(to: 2.0)
+
+        #expect(result != nil)
+        #expect(result!.value == 100.0)
+        // relError = |p| * relError(x) = 2 * 0.05 = 0.10
+        #expect(abs(result!.relativeError - 0.10) < 0.001)
+    }
+
+    @Test func powerOfNegativeReturnsNil() {
+        let x = UncertainValue(-10.0, absoluteError: 0.5)
+        #expect(x.raised(to: 2.0) == nil)
+    }
+
+    @Test func powerOfZeroReturnsNil() {
+        let x = UncertainValue(0.0, absoluteError: 0.0)
+        #expect(x.raised(to: 2.0) == nil)
+    }
+
+    // MARK: - Integer Power Tests
+
+    @Test func integerPowerNegativeBaseEvenExponent() {
+        let x = UncertainValue(-2.0, absoluteError: 0.1)  // 5% relative
+        let result = x.raised(to: 2)
+
+        #expect(result != nil)
+        #expect(result!.value == 4.0)
+        // relError = |n| * relError(x) = 2 * 0.05 = 0.10
+        #expect(abs(result!.relativeError - 0.10) < 0.001)
+    }
+
+    @Test func integerPowerNegativeBaseOddExponent() {
+        let x = UncertainValue(-2.0, absoluteError: 0.1)  // 5% relative
+        let result = x.raised(to: 3)
+
+        #expect(result != nil)
+        #expect(result!.value == -8.0)
+        // relError = |n| * relError(x) = 3 * 0.05 = 0.15
+        #expect(abs(result!.relativeError - 0.15) < 0.001)
+    }
+
+    @Test func integerPowerZeroBaseZeroErrorPositiveExponent() {
+        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let result = x.raised(to: 2)
+
+        #expect(result != nil)
+        #expect(result!.value == 0.0)
+        #expect(result!.absoluteError == 0.0)
+    }
+
+    @Test func integerPowerZeroBaseNonZeroErrorReturnsNil() {
+        let x = UncertainValue(0.0, absoluteError: 0.1)
+        #expect(x.raised(to: 2) == nil)
+    }
+
+    @Test func negative() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+        let neg = x.negative
+        #expect(neg.value == -10.0)
+        #expect(neg.absoluteError == 0.5)
+    }
+
+    @Test func reciprocal() {
+        let x = UncertainValue.withRelativeError(4.0, 0.05)
+        let rec = x.reciprocal
+
+        #expect(rec != nil)
+        #expect(rec!.value == 0.25)
+        #expect(abs(rec!.relativeError - 0.05) < 0.001)
+    }
+
+    @Test func reciprocalOfZeroReturnsNil() {
+        let zero = UncertainValue(0.0, absoluteError: 0.0)
+        #expect(zero.reciprocal == nil)
+    }
+
+    @Test func exponentiationOperator() {
+        let x = UncertainValue.withRelativeError(10.0, 0.05)
+        let result = x ** 2.0
+
+        #expect(result != nil)
+        #expect(result!.value == 100.0)
+        #expect(abs(result!.relativeError - 0.10) < 0.001)
+    }
+
+    // MARK: - Constant Operations (no norm needed)
+
+    @Test func addConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let sum = x.adding(2.0)
+        #expect(sum.value == 12.0)
+        #expect(sum.absoluteError == 0.5)
+    }
+
+    @Test func subtractConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let sub = x.subtracting(5.0)
+        #expect(sub.value == 5.0)
+        #expect(sub.absoluteError == 0.5)
+    }
+
+    @Test func multiplyByConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let prod = x.multiplying(by: 2.0)
+        #expect(prod.value == 20.0)
+        #expect(prod.absoluteError == 1.0)
+    }
+
+    @Test func divideByConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let div = x.dividing(by: 2.0)
+        #expect(div != nil)
+        #expect(div!.value == 5.0)
+        #expect(div!.absoluteError == 0.25)
+    }
+
+    @Test func divideByConstantZeroReturnsNil() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+        #expect(x.dividing(by: 0.0) == nil)
+    }
+
+    // MARK: - Array Operations with Explicit Norm
+
+    @Test func arraySumWithL1() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.3),
+            UncertainValue(20.0, absoluteError: 0.4)
+        ]
+        let result = values.sum(using: .l1)
+
+        #expect(result.value == 30.0)
+        // L1: |0.3| + |0.4| = 0.7
+        #expect(abs(result.absoluteError - 0.7) < 0.0001)
+    }
+
+    @Test func arraySumWithL2() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.3),
+            UncertainValue(20.0, absoluteError: 0.4)
+        ]
+        let result = values.sum(using: .l2)
+
+        #expect(result.value == 30.0)
+        // L2: sqrt(0.3^2 + 0.4^2) = 0.5
+        #expect(abs(result.absoluteError - 0.5) < 0.0001)
+    }
+
+    @Test func arraySumWithLp() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 3.0),
+            UncertainValue(20.0, absoluteError: 4.0)
+        ]
+        let result = values.sum(using: .lp(p: 3.0))
+
+        #expect(result.value == 30.0)
+        // Lp with p=3: (3^3 + 4^3)^(1/3) = (27 + 64)^(1/3) ≈ 4.498
+        #expect(abs(result.absoluteError - 4.498) < 0.001)
+    }
+
+    @Test func arrayProductWithL1() {
+        let values = [
+            UncertainValue(2.0, absoluteError: 0.2),  // 10% relative
+            UncertainValue(3.0, absoluteError: 0.3)   // 10% relative
+        ]
+        let result = values.product(using: .l1)
+
+        #expect(result.value == 6.0)
+        // L1: 0.1 + 0.1 = 0.2 relative -> 1.2 absolute
+        #expect(abs(result.absoluteError - 1.2) < 0.0001)
+    }
+
+    @Test func arrayProductWithL2() {
+        let values = [
+            UncertainValue(2.0, absoluteError: 0.2),  // 10% relative
+            UncertainValue(3.0, absoluteError: 0.3)   // 10% relative
+        ]
+        let result = values.product(using: .l2)
+
+        #expect(result.value == 6.0)
+        // L2: sqrt(0.1^2 + 0.1^2) ≈ 0.1414 relative -> 0.849 absolute
+        #expect(abs(result.absoluteError - 0.849) < 0.001)
+    }
+
+    @Test func l1GivesLargerErrorThanL2() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.3),
+            UncertainValue(20.0, absoluteError: 0.4)
+        ]
+        let sumL1 = values.sum(using: .l1)
+        let sumL2 = values.sum(using: .l2)
+
+        #expect(sumL1.absoluteError > sumL2.absoluteError)
+    }
+
+    @Test func emptyArraySum() {
+        let values: [UncertainValue] = []
+        let result = values.sum(using: .l2)
+        #expect(result.value == 0.0)
+        #expect(result.absoluteError == 0.0)
+    }
+
+    @Test func emptyArrayProduct() {
+        let values: [UncertainValue] = []
+        let result = values.product(using: .l2)
+        #expect(result.value == 1.0)  // identity for multiplication
+        #expect(result.absoluteError == 0.0)
+    }
+}
