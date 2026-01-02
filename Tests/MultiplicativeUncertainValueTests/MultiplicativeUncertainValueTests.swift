@@ -580,4 +580,367 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
         XCTAssertEqual(result.value, 0.5, accuracy: 1e-10)
     }
+
+    // MARK: - isNegative
+
+    func testIsNegativeTrue() {
+        let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
+        XCTAssertTrue(muv.isNegative)
+    }
+
+    func testIsNegativeFalse() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        XCTAssertFalse(muv.isNegative)
+    }
+
+    // MARK: - Multiplication
+
+    func testMultiplyingTwoPositiveValues() {
+        let a = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.2)
+        let result = a.multiplying(b, using: .l2)
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testMultiplyingPositiveAndNegative() {
+        let a = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: -3.0, multiplicativeError: 1.2)
+        let result = a.multiplying(b, using: .l2)
+
+        XCTAssertEqual(result.value, -6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testMultiplyingTwoNegatives() {
+        let a = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: -3.0, multiplicativeError: 1.2)
+        let result = a.multiplying(b, using: .l2)
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testMultiplyingErrorPropagation() {
+        // Both have 10% relative error (multError = 1.1)
+        let a = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.1)
+        let result = a.multiplying(b, using: .l2)
+
+        // L2 of two log(1.1) errors: sqrt(2) * log(1.1)
+        let expectedLogError = sqrt(2.0) * Darwin.log(1.1)
+        XCTAssertEqual(result.logAbs.absoluteError, expectedLogError, accuracy: 1e-10)
+    }
+
+    func testMultiplyingWithL1Norm() {
+        let a = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.2)
+        let result = a.multiplying(b, using: .l1)
+
+        // L1: log(1.1) + log(1.2)
+        let expectedLogError = Darwin.log(1.1) + Darwin.log(1.2)
+        XCTAssertEqual(result.logAbs.absoluteError, expectedLogError, accuracy: 1e-10)
+    }
+
+    // MARK: - Division
+
+    func testDividingTwoPositives() {
+        let a = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.2)
+        let result = a.dividing(by: b, using: .l2)
+
+        XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testDividingNegativeByPositive() {
+        let a = MultiplicativeUncertainValue(value: -6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.2)
+        let result = a.dividing(by: b, using: .l2)
+
+        XCTAssertEqual(result.value, -3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testDividingPositiveByNegative() {
+        let a = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.2)
+        let result = a.dividing(by: b, using: .l2)
+
+        XCTAssertEqual(result.value, -3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testDividingTwoNegatives() {
+        let a = MultiplicativeUncertainValue(value: -6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.2)
+        let result = a.dividing(by: b, using: .l2)
+
+        XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testDividingIsInverseOfMultiplying() {
+        let a = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.05)
+
+        let product = a.multiplying(b, using: .l2)
+        let quotient = product.dividing(by: b, using: .l2)
+
+        // Value should return close to original
+        XCTAssertEqual(quotient.value, a.value, accuracy: 1e-10)
+    }
+
+    // MARK: - Array Product
+
+    func testArrayProductTwoElements() {
+        let values = [
+            MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.2)
+        ]
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testArrayProductThreeElements() {
+        let values = [
+            MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: 4.0, multiplicativeError: 1.1)
+        ]
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, 24.0, accuracy: 1e-10)
+    }
+
+    func testArrayProductWithNegatives() {
+        let values = [
+            MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: -3.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: -4.0, multiplicativeError: 1.1)
+        ]
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, 24.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testArrayProductOddNegatives() {
+        let values = [
+            MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: -3.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: 4.0, multiplicativeError: 1.1)
+        ]
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, -24.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testArrayProductSingleElement() {
+        let values = [MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.2)]
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, 5.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.2, accuracy: 1e-10)
+    }
+
+    func testArrayProductEmptyArray() {
+        let values: [MultiplicativeUncertainValue] = []
+        let result = values.product(using: .l2)
+
+        XCTAssertEqual(result.value, 1.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.0, accuracy: 1e-10)
+    }
+
+    func testArrayProductL1VsL2() {
+        let values = [
+            MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1),
+            MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.2)
+        ]
+        let resultL1 = values.product(using: .l1)
+        let resultL2 = values.product(using: .l2)
+
+        // L1 error should be larger than L2
+        XCTAssertGreaterThan(resultL1.logAbs.absoluteError, resultL2.logAbs.absoluteError)
+    }
+
+    // MARK: - FloatingPointSign Product
+
+    func testSignProductAllPositive() {
+        let signs: [FloatingPointSign] = [.plus, .plus, .plus]
+        XCTAssertEqual(signs.product(), .plus)
+    }
+
+    func testSignProductOneNegative() {
+        let signs: [FloatingPointSign] = [.plus, .minus, .plus]
+        XCTAssertEqual(signs.product(), .minus)
+    }
+
+    func testSignProductTwoNegatives() {
+        let signs: [FloatingPointSign] = [.minus, .minus, .plus]
+        XCTAssertEqual(signs.product(), .plus)
+    }
+
+    func testSignProductThreeNegatives() {
+        let signs: [FloatingPointSign] = [.minus, .minus, .minus]
+        XCTAssertEqual(signs.product(), .minus)
+    }
+
+    func testSignProductEmpty() {
+        let signs: [FloatingPointSign] = []
+        XCTAssertEqual(signs.product(), .plus)
+    }
+
+    func testSignProductSinglePositive() {
+        let signs: [FloatingPointSign] = [.plus]
+        XCTAssertEqual(signs.product(), .plus)
+    }
+
+    func testSignProductSingleNegative() {
+        let signs: [FloatingPointSign] = [.minus]
+        XCTAssertEqual(signs.product(), .minus)
+    }
+
+    // MARK: - Scaling by Constant
+
+    func testScaledUpPositiveByPositive() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledUp(by: 3.0)
+
+        XCTAssertEqual(scaled.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
+        XCTAssertEqual(scaled.sign, .plus)
+    }
+
+    func testScaledUpPositiveByNegative() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledUp(by: -3.0)
+
+        XCTAssertEqual(scaled.value, -6.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
+        XCTAssertEqual(scaled.sign, .minus)
+    }
+
+    func testScaledUpNegativeByPositive() {
+        let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledUp(by: 3.0)
+
+        XCTAssertEqual(scaled.value, -6.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.sign, .minus)
+    }
+
+    func testScaledUpNegativeByNegative() {
+        let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledUp(by: -3.0)
+
+        XCTAssertEqual(scaled.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.sign, .plus)
+    }
+
+    func testScaledUpPreservesMultiplicativeError() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.25)
+        let scaled = muv.scaledUp(by: 10.0)
+
+        XCTAssertEqual(scaled.multiplicativeError, muv.multiplicativeError, accuracy: 1e-10)
+    }
+
+    func testScaledUpAbsoluteErrorScalesCorrectly() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let lambda = 3.0
+        let scaled = muv.scaledUp(by: lambda)
+
+        // absoluteError = |value| * (multError - 1)
+        let originalAbsError = abs(muv.value) * (muv.multiplicativeError - 1)
+        let scaledAbsError = abs(scaled.value) * (scaled.multiplicativeError - 1)
+
+        XCTAssertEqual(scaledAbsError, abs(lambda) * originalAbsError, accuracy: 1e-10)
+    }
+
+    func testScaledDownPositive() {
+        let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledDown(by: 2.0)
+
+        XCTAssertEqual(scaled.value, 3.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
+    }
+
+    func testScaledDownByNegative() {
+        let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let scaled = muv.scaledDown(by: -2.0)
+
+        XCTAssertEqual(scaled.value, -3.0, accuracy: 1e-10)
+        XCTAssertEqual(scaled.sign, .minus)
+    }
+
+    // MARK: - Operators (MUV * MUV, MUV / MUV)
+
+    func testMultiplicationOperator() {
+        let a = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 3.0, multiplicativeError: 1.2)
+        let result = a * b
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+    }
+
+    func testDivisionOperator() {
+        let a = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let b = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.2)
+        let result = a / b
+
+        XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
+    }
+
+    // MARK: - Mixed Operators (Double * MUV, etc.)
+
+    func testDoubleTimesMUV() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let result = 3.0 * muv
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
+    }
+
+    func testMUVTimesDouble() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let result = muv * 3.0
+
+        XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
+    }
+
+    func testMUVDividedByDouble() {
+        let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let result = muv / 2.0
+
+        XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
+    }
+
+    func testDoubleDividedByMUV() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let result = 6.0 / muv
+
+        XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
+    }
+
+    func testNegativeDoubleTimesMUV() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let result = -3.0 * muv
+
+        XCTAssertEqual(result.value, -6.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testMUVDividedByNegativeDouble() {
+        let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
+        let result = muv / -2.0
+
+        XCTAssertEqual(result.value, -3.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
 }

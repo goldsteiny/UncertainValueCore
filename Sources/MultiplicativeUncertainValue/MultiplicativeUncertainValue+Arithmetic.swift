@@ -17,6 +17,16 @@ extension MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(logAbs: logAbs, sign: .plus)
     }
     
+    /// Whether the value is positive.
+    public var isPositive: Bool {
+        sign == .plus
+    }
+    
+    /// Whether the value is negative.
+    public var isNegative: Bool {
+        sign == .minus
+    }
+
     /// Negation (-x).
     /// - Returns: New value with flipped sign, same logAbs.
     public var negative: MultiplicativeUncertainValue {
@@ -28,6 +38,55 @@ extension MultiplicativeUncertainValue {
     /// - Returns: New value with negated logAbs, same sign.
     public var reciprocal: MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(logAbs: logAbs.negative, sign: sign)
+    }
+}
+
+// MARK: - Binary Operations
+
+extension MultiplicativeUncertainValue {
+    /// Multiplies by another UncertainValue using the specified norm strategy.
+    /// - Parameters:
+    ///   - other: Value to multiply by.
+    ///   - strategy: Norm strategy for combining relative errors.
+    public func multiplying(_ other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
+        [self, other].product(using: strategy)
+    }
+
+    /// Divides by another UncertainValue using the specified norm strategy.
+    /// - Parameters:
+    ///   - other: Divisor value.
+    ///   - strategy: Norm strategy for combining relative errors.
+    /// - Returns: Result of division.
+    public func dividing(by other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
+        return other.reciprocal.multiplying(self, using: strategy)
+    }
+}
+
+// MARK: - Scaling by Constant
+
+extension MultiplicativeUncertainValue {
+    /// Scales by a non-zero constant.
+    /// - Parameter alpha: Scale factor (must be non-zero).
+    /// - Returns: Scaled value with same multiplicative error.
+    /// - Precondition: lambda != 0 (MultiplicativeUncertainValue cannot represent zero).
+    public func scaledUp(by alpha: Double) -> MultiplicativeUncertainValue {
+        precondition(alpha != 0, "Cannot scale to zero: MultiplicativeUncertainValue cannot represent 0")
+        precondition(alpha.isFinite, "Scale factor must be finite")
+
+        let newLogValue = logAbs.value + Darwin.log(abs(alpha))
+        let newLogAbs = UncertainValue(newLogValue, absoluteError: logAbs.absoluteError)
+        let newSign = [sign, alpha.sign].product()
+
+        return MultiplicativeUncertainValue(logAbs: newLogAbs, sign: newSign)
+    }
+
+    /// Divides by a non-zero constant.
+    /// - Parameter lambda: Divisor (must be non-zero).
+    /// - Returns: Scaled value with same multiplicative error.
+    /// - Precondition: lambda != 0.
+    public func scaledDown(by lambda: Double) -> MultiplicativeUncertainValue {
+        precondition(lambda != 0, "Cannot divide by zero")
+        return scaledUp(by: 1.0 / lambda)
     }
 }
 
