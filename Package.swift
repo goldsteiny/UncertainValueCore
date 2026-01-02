@@ -44,7 +44,7 @@ let package = Package(
         ),
         .testTarget(
             name: "UncertainValueCoreTests",
-            dependencies: ["UncertainValueCore"]
+            dependencies: ["UncertainValueCore", "UncertainValueStatistics"]
         ),
         .testTarget(
             name: "UncertainValueConvenienceTests",

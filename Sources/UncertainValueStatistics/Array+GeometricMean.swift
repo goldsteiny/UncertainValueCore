@@ -3,6 +3,7 @@
 //  UncertainValueStatistics
 //
 //  Geometric mean with log-space standard deviation as uncertainty.
+//  Uses L2 norm (standard Euclidean) for all calculations.
 //
 
 import Foundation

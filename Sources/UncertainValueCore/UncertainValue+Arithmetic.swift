@@ -109,13 +109,13 @@ extension UncertainValue {
 
     /// Multiplies by a constant (no norm needed - single error source).
     public func multiplying(by constant: Double) -> UncertainValue {
-        UncertainValue(value * constant, absoluteError: absoluteError * constant)
+        UncertainValue(value * constant, absoluteError: absoluteError * abs(constant))
     }
 
     /// Divides by a constant (no norm needed - single error source).
     /// - Returns: Result, or nil if constant is 0.
     public func dividing(by constant: Double) -> UncertainValue? {
         guard constant != 0 else { return nil }
-        return UncertainValue.withRelativeError(value / constant, relativeError)
+        return UncertainValue(value / constant, absoluteError: absoluteError / abs(constant))
     }
 }

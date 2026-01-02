@@ -193,6 +193,7 @@ public enum MeasurementMath {
 
     /// Sample standard deviation of the central values.
     /// Note: Always uses L2 norm in value calculation as this is the definition of standard deviation.
+    /// TODO: deprecate
     public static func sampleStandardDeviation(_ values: [UncertainValue]) -> Double? {
         guard values.count > 1 else { return nil }
         let meanVal = values.map(\.value).reduce(0, +) / Double(values.count)

@@ -65,3 +65,19 @@ public struct UncertainValue: Hashable, Sendable, Codable {
         absoluteError * absoluteError
     }
 }
+
+// MARK: - Common Constants
+
+extension UncertainValue {
+    /// Zero with no uncertainty.
+    public static let zero = UncertainValue(0, absoluteError: 0)
+
+    /// One with no uncertainty.
+    public static let one = UncertainValue(1, absoluteError: 0)
+
+    /// Pi with no uncertainty.
+    public static let pi = UncertainValue(Double.pi, absoluteError: 0)
+
+    /// Euler's number (e) with no uncertainty.
+    public static let e = UncertainValue(M_E, absoluteError: 0)
+}

@@ -3,6 +3,7 @@
 //  UncertainValueStatistics
 //
 //  Arithmetic mean with standard deviation as uncertainty.
+//  Uses L2 norm (standard Euclidean) for all calculations.
 //
 
 import Accelerate
@@ -10,6 +11,25 @@ import Foundation
 import UncertainValueCore
 
 extension Array where Element == Double {
+
+    public func normalizedScalableReduce(_ f: ([Double]) -> Double) -> Double {
+        precondition(count >= 1, "Scaling requires at least 1 value")
+
+        let maxAbsValue = map { abs($0) }.max() ?? 0
+        guard maxAbsValue > 0 else {
+            return 0.0
+        }
+
+        let normalized = map { $0 / maxAbsValue }
+        return maxAbsValue * f(normalized)
+    }
+
+    public var valuesMean: Double {
+        precondition(count >= 1, "Arithmetic mean requires at least 1 value")
+
+        return normalizedScalableReduce { $0.reduce(0, +) / Double(count) }
+    }
+
     /// Computes the arithmetic mean with sample standard deviation as uncertainty.
     /// Uses normalization by max value for numerical stability with extreme values.
     /// - Returns: UncertainValue where value is the mean and absoluteError is the sample standard deviation.
@@ -17,20 +37,7 @@ extension Array where Element == Double {
     public func arithmeticMean() -> UncertainValue {
         precondition(count >= 2, "Arithmetic mean requires at least 2 values for standard deviation")
 
-        // Normalize by max absolute value for numerical stability
-        let maxValue = map { abs($0) }.max() ?? 0
-        guard maxValue > 0 else {
-            return UncertainValue(0, absoluteError: 0)
-        }
-
-        let normalized = map { $0 / maxValue }
-        let n = Double(count)
-        let normalizedMean = normalized.reduce(0, +) / n
-
-        let normalizedDeviations = normalized.map { $0 - normalizedMean }
-        let normalizedStdDev = UncertainValueCore.norm2(normalizedDeviations) / Darwin.sqrt(n - 1)
-
-        return UncertainValue(maxValue * normalizedMean, absoluteError: maxValue * normalizedStdDev)
+        return UncertainValue(valuesMean, absoluteError: sampleStandardDeviation())
     }
 
     /// Computes the arithmetic mean with sample standard deviation as uncertainty.
@@ -52,5 +59,15 @@ extension Array where Element == Double {
         let sampleStdDev = rms * Darwin.sqrt(n / (n - 1))
 
         return UncertainValue(mean, absoluteError: sampleStdDev)
+    }
+}
+
+extension Array where Element == UncertainValue {
+    /// Computes the arithmetic mean with error propagation using L2 norm.
+    /// - Returns: Mean value with combined and scaled uncertainty.
+    /// - Precondition: Array must not be empty.
+    public func arithmeticMean() -> UncertainValue {
+        precondition(!isEmpty, "Arithmetic mean requires at least 1 value")
+        return sum(using: .l2).dividing(by: Double(count))!
     }
 }

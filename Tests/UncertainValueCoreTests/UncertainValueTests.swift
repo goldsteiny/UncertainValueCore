@@ -6,6 +6,7 @@
 //  All tests use explicit norm strategies (no operators).
 //
 
+import Foundation
 import Testing
 @testable import UncertainValueCore
 
@@ -52,6 +53,111 @@ struct UncertainValueTests {
     @Test func variance() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         #expect(x.variance == 0.25)
+    }
+
+    // MARK: - Constants Tests
+
+    @Test func constantZero() {
+        let z = UncertainValue.zero
+        #expect(z.value == 0.0)
+        #expect(z.absoluteError == 0.0)
+    }
+
+    @Test func constantOne() {
+        let o = UncertainValue.one
+        #expect(o.value == 1.0)
+        #expect(o.absoluteError == 0.0)
+    }
+
+    @Test func constantPi() {
+        let p = UncertainValue.pi
+        #expect(p.value == Double.pi)
+        #expect(p.absoluteError == 0.0)
+    }
+
+    @Test func constantE() {
+        let e = UncertainValue.e
+        #expect(e.value == M_E)
+        #expect(e.absoluteError == 0.0)
+    }
+
+    // MARK: - Array Helper Properties Tests
+
+    @Test func arrayValues() {
+        let arr = [
+            UncertainValue(1.0, absoluteError: 0.1),
+            UncertainValue(2.0, absoluteError: 0.2),
+            UncertainValue(3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.values == [1.0, 2.0, 3.0])
+    }
+
+    @Test func arrayAbsoluteErrors() {
+        let arr = [
+            UncertainValue(1.0, absoluteError: 0.1),
+            UncertainValue(2.0, absoluteError: 0.2),
+            UncertainValue(3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.absoluteErrors == [0.1, 0.2, 0.3])
+    }
+
+    @Test func arrayRelativeErrors() {
+        let arr = [
+            UncertainValue(10.0, absoluteError: 1.0),  // 10%
+            UncertainValue(20.0, absoluteError: 1.0)   // 5%
+        ]
+        #expect(arr.relativeErrors == [0.1, 0.05])
+    }
+
+    @Test func arrayValuesMax() {
+        let arr = [
+            UncertainValue(1.0, absoluteError: 0.1),
+            UncertainValue(5.0, absoluteError: 0.2),
+            UncertainValue(3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.valuesMax == 5.0)
+    }
+
+    @Test func arrayValuesMin() {
+        let arr = [
+            UncertainValue(1.0, absoluteError: 0.1),
+            UncertainValue(5.0, absoluteError: 0.2),
+            UncertainValue(3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.valuesMin == 1.0)
+    }
+
+    @Test func arrayValuesAbsMax() {
+        let arr = [
+            UncertainValue(-10.0, absoluteError: 0.1),
+            UncertainValue(5.0, absoluteError: 0.2),
+            UncertainValue(-3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.valuesAbsMax == 10.0)
+    }
+
+    @Test func arrayValuesAbsMaxAllNegative() {
+        let arr = [
+            UncertainValue(-1.0, absoluteError: 0.1),
+            UncertainValue(-5.0, absoluteError: 0.2),
+            UncertainValue(-3.0, absoluteError: 0.3)
+        ]
+        #expect(arr.valuesAbsMax == 5.0)
+    }
+
+    @Test func emptyArrayValuesMax() {
+        let arr: [UncertainValue] = []
+        #expect(arr.valuesMax == nil)
+    }
+
+    @Test func emptyArrayValuesMin() {
+        let arr: [UncertainValue] = []
+        #expect(arr.valuesMin == nil)
+    }
+
+    @Test func emptyArrayValuesAbsMax() {
+        let arr: [UncertainValue] = []
+        #expect(arr.valuesAbsMax == nil)
     }
 
     // MARK: - Arithmetic Tests (explicit norm)
@@ -227,6 +333,23 @@ struct UncertainValueTests {
         #expect(x.dividing(by: 0.0) == nil)
     }
 
+    @Test func multiplyByNegativeConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let prod = x.multiplying(by: -2.0)
+        #expect(prod.value == -20.0)
+        #expect(prod.absoluteError == 1.0)  // abs() applied in init
+    }
+
+    @Test func divideByNegativeConstant() {
+        let x = UncertainValue(10.0, absoluteError: 0.5)
+
+        let div = x.dividing(by: -2.0)
+        #expect(div != nil)
+        #expect(div!.value == -5.0)
+        #expect(div!.relativeError == 0.05)  // relative error preserved
+    }
+
     // MARK: - Array Operations with Explicit Norm
 
     @Test func arraySumWithL1() {
@@ -312,5 +435,134 @@ struct UncertainValueTests {
         let result = values.product(using: .l2)
         #expect(result.value == 1.0)  // identity for multiplication
         #expect(result.absoluteError == 0.0)
+    }
+
+    // MARK: - Norm2 Tests
+
+    @Test func norm2Basic() {
+        // Classic 3-4-5 triangle
+        let values = [
+            UncertainValue(3.0, absoluteError: 0.1),
+            UncertainValue(4.0, absoluteError: 0.1)
+        ]
+        let result = values.norm2(using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 5.0)
+    }
+
+    @Test func norm2ErrorPropagation() {
+        // x = 3 ± 0.1, y = 4 ± 0.1
+        // x^2 = 9, relError = 2 * 0.1/3 = 0.0667, absError = 0.6
+        // y^2 = 16, relError = 2 * 0.1/4 = 0.05, absError = 0.8
+        // sum = 25, absError(L2) = sqrt(0.6^2 + 0.8^2) = 1.0
+        // sqrt(25) = 5, relError = 0.5 * (1.0/25) = 0.02, absError = 0.1
+        let values = [
+            UncertainValue(3.0, absoluteError: 0.1),
+            UncertainValue(4.0, absoluteError: 0.1)
+        ]
+        let result = values.norm2(using: .l2)!
+
+        #expect(result.value == 5.0)
+        #expect(abs(result.absoluteError - 0.1) < 0.0001)
+    }
+
+    @Test func norm2SingleElement() {
+        let values = [UncertainValue(5.0, absoluteError: 0.2)]
+        let result = values.norm2(using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 5.0)
+        // x^2 = 25, relError = 2 * 0.04 = 0.08, absError = 2.0
+        // sqrt: relError = 0.5 * 0.08 = 0.04, absError = 0.2
+        #expect(abs(result!.absoluteError - 0.2) < 0.0001)
+    }
+
+    @Test func norm2EmptyArray() {
+        let values: [UncertainValue] = []
+        let result = values.norm2(using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 0.0)
+        #expect(result!.absoluteError == 0.0)
+    }
+
+    @Test func norm2WithNegativeValues() {
+        // Negative values should work (squaring makes them positive)
+        let values = [
+            UncertainValue(-3.0, absoluteError: 0.1),
+            UncertainValue(4.0, absoluteError: 0.1)
+        ]
+        let result = values.norm2(using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 5.0)
+    }
+
+    @Test func norm2AllNegativeValues() {
+        // All-negative array: norm should still be positive
+        let values = [
+            UncertainValue(-3.0, absoluteError: 0.1),
+            UncertainValue(-4.0, absoluteError: 0.1)
+        ]
+        let result = values.norm2(using: .l2)
+
+        #expect(result != nil)
+        #expect(result!.value == 5.0)
+        #expect(result!.absoluteError > 0)
+    }
+
+    // MARK: - Max/Min Tests
+
+    @Test func maxReturnsLargestValue() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.1),
+            UncertainValue(30.0, absoluteError: 0.2),
+            UncertainValue(20.0, absoluteError: 0.3)
+        ]
+        let result = values.max
+
+        #expect(result != nil)
+        #expect(result!.value == 30.0)
+        #expect(result!.absoluteError == 0.2)
+    }
+
+    @Test func maxTieBreaksWithLargerError() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.1),
+            UncertainValue(10.0, absoluteError: 0.3),
+            UncertainValue(10.0, absoluteError: 0.2)
+        ]
+        let result = values.max
+
+        #expect(result != nil)
+        #expect(result!.value == 10.0)
+        #expect(result!.absoluteError == 0.3)
+    }
+
+    @Test func minReturnsSmallestValue() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.1),
+            UncertainValue(30.0, absoluteError: 0.2),
+            UncertainValue(20.0, absoluteError: 0.3)
+        ]
+        let result = values.min
+
+        #expect(result != nil)
+        #expect(result!.value == 10.0)
+        #expect(result!.absoluteError == 0.1)
+    }
+
+    @Test func minTieBreaksWithLargerError() {
+        let values = [
+            UncertainValue(10.0, absoluteError: 0.1),
+            UncertainValue(10.0, absoluteError: 0.3),
+            UncertainValue(10.0, absoluteError: 0.2)
+        ]
+        let result = values.min
+
+        #expect(result != nil)
+        #expect(result!.value == 10.0)
+        #expect(result!.absoluteError == 0.3)
     }
 }
