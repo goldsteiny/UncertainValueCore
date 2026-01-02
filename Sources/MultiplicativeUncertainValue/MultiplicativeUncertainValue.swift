@@ -37,6 +37,19 @@ public final class MultiplicativeUncertainValue {
         )
     }
 
+    /// Creates a multiplicative uncertain value directly from log-space representation.
+    /// - Parameters:
+    ///   - logAbs: Log of absolute value with error in log-space.
+    ///   - sign: Sign of the value (.plus or .minus).
+    /// - Precondition: logAbs.value and logAbs.absoluteError must be finite.
+    public init(logAbs: UncertainValue, sign: FloatingPointSign) {
+        precondition(logAbs.value.isFinite, "logAbs.value must be finite, got \(logAbs.value)")
+        precondition(logAbs.absoluteError.isFinite, "logAbs.absoluteError must be finite, got \(logAbs.absoluteError)")
+
+        self.sign = sign
+        self.logAbs = logAbs
+    }
+
     /// The central value with sign applied.
     public var value: Double {
         let absValue = Darwin.exp(logAbs.value)

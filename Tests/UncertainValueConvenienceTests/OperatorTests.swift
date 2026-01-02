@@ -82,16 +82,28 @@ struct OperatorTests {
         #expect(sub2.value == 5.0)
         #expect(sub2.absoluteError == 0.5)
     }
-
+    
     @Test func multiplyByConstant() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
-
+        
         let prod1 = 2.0 * x
         #expect(prod1.value == 20.0)
         #expect(prod1.absoluteError == 1.0)
-
+        
         let prod2 = x * 2.0
         #expect(prod2.value == 20.0)
+        #expect(prod2.absoluteError == 1.0)
+    }
+    
+    @Test func multiplyZeroByConstant() {
+        let x = UncertainValue(0.0, absoluteError: 0.5)
+        
+        let prod1 = 2.0 * x
+        #expect(prod1.value == 0.0)
+        #expect(prod1.absoluteError == 1.0)
+        
+        let prod2 = x * 2.0
+        #expect(prod2.value == 0.0)
         #expect(prod2.absoluteError == 1.0)
     }
 

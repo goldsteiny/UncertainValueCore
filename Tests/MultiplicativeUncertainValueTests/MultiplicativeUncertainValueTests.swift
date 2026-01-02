@@ -325,4 +325,259 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
         XCTAssertNil(muv, "Converting with non-finite error should return nil")
     }
+
+    // MARK: - Log-Space Initializer
+
+    func testLogSpaceInitializer() {
+        let logAbs = UncertainValue(Darwin.log(2.0), absoluteError: Darwin.log(1.1))
+        let muv = MultiplicativeUncertainValue(logAbs: logAbs, sign: .plus)
+
+        XCTAssertEqual(muv.value, 2.0, accuracy: 1e-10)
+        XCTAssertEqual(muv.multiplicativeError, 1.1, accuracy: 1e-10)
+        XCTAssertEqual(muv.sign, .plus)
+    }
+
+    func testLogSpaceInitializerNegativeSign() {
+        let logAbs = UncertainValue(Darwin.log(3.0), absoluteError: Darwin.log(1.2))
+        let muv = MultiplicativeUncertainValue(logAbs: logAbs, sign: .minus)
+
+        XCTAssertEqual(muv.value, -3.0, accuracy: 1e-10)
+        XCTAssertEqual(muv.sign, .minus)
+    }
+
+    // MARK: - Static exp Constructor
+
+    func testExpDefaultSignCreatesPositive() {
+        let logAbs = UncertainValue(Darwin.log(4.0), absoluteError: Darwin.log(1.2))
+        let muv = MultiplicativeUncertainValue.exp(logAbs)
+
+        XCTAssertEqual(muv.value, 4.0, accuracy: 1e-10)
+        XCTAssertEqual(muv.sign, .plus)
+    }
+
+    func testExpWithMinusSignCreatesNegative() {
+        let logAbs = UncertainValue(Darwin.log(4.0), absoluteError: Darwin.log(1.2))
+        let muv = MultiplicativeUncertainValue.exp(logAbs, withResultSign: .minus)
+
+        XCTAssertEqual(muv.value, -4.0, accuracy: 1e-10)
+        XCTAssertEqual(muv.sign, .minus)
+    }
+
+    func testExpPreservesLogAbs() {
+        let logAbs = UncertainValue(Darwin.log(5.0), absoluteError: Darwin.log(1.3))
+        let muv = MultiplicativeUncertainValue.exp(logAbs, withResultSign: .plus)
+
+        XCTAssertEqual(muv.logAbs.value, logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(muv.logAbs.absoluteError, logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    // MARK: - Reciprocal
+
+    func testReciprocalValue() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let reciprocal = muv.reciprocal
+
+        XCTAssertEqual(reciprocal.value, 0.5, accuracy: 1e-10)
+    }
+
+    func testReciprocalPreservesSign() {
+        let positive = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let negative = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+
+        XCTAssertEqual(positive.reciprocal.sign, .plus)
+        XCTAssertEqual(negative.reciprocal.sign, .minus)
+    }
+
+    func testReciprocalLogAbsNegated() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        let reciprocal = muv.reciprocal
+
+        XCTAssertEqual(reciprocal.logAbs.value, -muv.logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(reciprocal.logAbs.absoluteError, muv.logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    func testReciprocalOfReciprocal() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.2)
+        let doubleReciprocal = muv.reciprocal.reciprocal
+
+        XCTAssertEqual(doubleReciprocal.value, muv.value, accuracy: 1e-10)
+        XCTAssertEqual(doubleReciprocal.multiplicativeError, muv.multiplicativeError, accuracy: 1e-10)
+    }
+
+    // MARK: - Negative
+
+    func testNegativeFlipsValue() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        let neg = muv.negative
+
+        XCTAssertEqual(neg.value, -5.0, accuracy: 1e-10)
+    }
+
+    func testNegativeFlipsSign() {
+        let positive = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        let negative = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
+
+        XCTAssertEqual(positive.negative.sign, .minus)
+        XCTAssertEqual(negative.negative.sign, .plus)
+    }
+
+    func testNegativePreservesLogAbs() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        let neg = muv.negative
+
+        XCTAssertEqual(neg.logAbs.value, muv.logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(neg.logAbs.absoluteError, muv.logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    func testDoubleNegative() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        let doubleNeg = muv.negative.negative
+
+        XCTAssertEqual(doubleNeg.value, muv.value, accuracy: 1e-10)
+        XCTAssertEqual(doubleNeg.sign, muv.sign)
+    }
+
+    // MARK: - Absolute Value
+
+    func testAbsValuePositive() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
+        let abs = muv.absValue
+
+        XCTAssertEqual(abs.value, 5.0, accuracy: 1e-10)
+        XCTAssertEqual(abs.sign, .plus)
+    }
+
+    func testAbsValueNegative() {
+        let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
+        let abs = muv.absValue
+
+        XCTAssertEqual(abs.value, 5.0, accuracy: 1e-10)
+        XCTAssertEqual(abs.sign, .plus)
+    }
+
+    func testAbsValuePreservesLogAbs() {
+        let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
+        let abs = muv.absValue
+
+        XCTAssertEqual(abs.logAbs.value, muv.logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(abs.logAbs.absoluteError, muv.logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    func testAbsValueIdempotent() {
+        let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
+        let abs1 = muv.absValue
+        let abs2 = abs1.absValue
+
+        XCTAssertEqual(abs2.value, abs1.value, accuracy: 1e-10)
+        XCTAssertEqual(abs2.sign, abs1.sign)
+    }
+
+    // MARK: - Raised to Integer Power
+
+    func testRaisedToIntegerPowerPositive() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 3) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        XCTAssertEqual(result.value, 8.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testRaisedToEvenPowerBecomesPositive() {
+        let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 2) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        XCTAssertEqual(result.value, 4.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testRaisedToOddPowerPreservesSign() {
+        let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 3) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        XCTAssertEqual(result.value, -8.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .minus)
+    }
+
+    func testRaisedToZeroPower() {
+        let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.2)
+        guard let result = muv.raised(to: 0) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        XCTAssertEqual(result.value, 1.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testRaisedToNegativeIntegerPower() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: -2) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        XCTAssertEqual(result.value, 0.25, accuracy: 1e-10)
+    }
+
+    func testRaisedToIntegerPowerLogAbsPropagation() {
+        let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 3) else {
+            XCTFail("Should succeed for valid input")
+            return
+        }
+
+        // logAbs should be scaled by 3
+        XCTAssertEqual(result.logAbs.value, 3 * muv.logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(result.logAbs.absoluteError, 3 * muv.logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    // MARK: - Raised to Real Power
+
+    func testRaisedToRealPowerPositive() {
+        let muv = MultiplicativeUncertainValue(value: 4.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 0.5) else {
+            XCTFail("Should succeed for positive value")
+            return
+        }
+
+        XCTAssertEqual(result.value, 2.0, accuracy: 1e-10)
+        XCTAssertEqual(result.sign, .plus)
+    }
+
+    func testRaisedToRealPowerNegativeReturnsNil() {
+        let muv = MultiplicativeUncertainValue(value: -4.0, multiplicativeError: 1.1)
+        let result = muv.raised(to: 0.5)
+
+        XCTAssertNil(result, "Real power of negative value should return nil")
+    }
+
+    func testRaisedToRealPowerLogAbsPropagation() {
+        let muv = MultiplicativeUncertainValue(value: 4.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: 2.5) else {
+            XCTFail("Should succeed for positive value")
+            return
+        }
+
+        XCTAssertEqual(result.logAbs.value, 2.5 * muv.logAbs.value, accuracy: 1e-10)
+        XCTAssertEqual(result.logAbs.absoluteError, 2.5 * muv.logAbs.absoluteError, accuracy: 1e-10)
+    }
+
+    func testRaisedToNegativeRealPower() {
+        let muv = MultiplicativeUncertainValue(value: 4.0, multiplicativeError: 1.1)
+        guard let result = muv.raised(to: -0.5) else {
+            XCTFail("Should succeed for positive value")
+            return
+        }
+
+        XCTAssertEqual(result.value, 0.5, accuracy: 1e-10)
+    }
 }

@@ -109,7 +109,7 @@ extension UncertainValue {
 
     /// Multiplies by a constant (no norm needed - single error source).
     public func multiplying(by constant: Double) -> UncertainValue {
-        UncertainValue.withRelativeError(value * constant, relativeError)
+        UncertainValue(value * constant, absoluteError: absoluteError * constant)
     }
 
     /// Divides by a constant (no norm needed - single error source).

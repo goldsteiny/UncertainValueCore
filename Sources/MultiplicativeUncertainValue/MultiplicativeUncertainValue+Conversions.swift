@@ -30,4 +30,13 @@ extension MultiplicativeUncertainValue {
     public var asUncertainValue: UncertainValue {
         UncertainValue.withRelativeError(value, relativeError)
     }
+    
+    /// Creates a MultiplicativeUncertainValue from log-space representation.
+    /// - Parameters:
+    ///   - logAbs: Log of absolute value with error in log-space.
+    ///   - sign: Sign of the result (defaults to .plus).
+    /// - Returns: A new MultiplicativeUncertainValue constructed from the log-space representation.
+    public static func exp(_ logAbs: UncertainValue, withResultSign sign: FloatingPointSign = .plus) -> MultiplicativeUncertainValue {
+        .init(logAbs: logAbs, sign: sign)
+    }
 }
