@@ -1,0 +1,55 @@
+//
+//  MultiplicativeUncertainValue.swift
+//  MultiplicativeUncertainValue
+//
+//  Log-domain representation of multiplicative uncertainty.
+//
+
+import Foundation
+import Darwin
+import UncertainValueCore
+
+// MARK: - Core Type
+
+/// Represents a non-zero value with multiplicative uncertainty in log-domain.
+public final class MultiplicativeUncertainValue {
+    /// Sign of the original value.
+    public let sign: FloatingPointSign
+
+    /// Log of absolute value with propagated error.
+    public let logAbs: UncertainValue
+
+    /// Creates a multiplicative uncertain value.
+    /// - Parameters:
+    ///   - value: The central value (must be non-zero and finite).
+    ///   - multiplicativeError: The multiplicative error factor (must be >= 1 and finite).
+    /// - Precondition: value != 0, value.isFinite, multiplicativeError >= 1, and multiplicativeError.isFinite.
+    public init(value: Double, multiplicativeError: Double) {
+        precondition(value != 0, "MultiplicativeUncertainValue requires value != 0")
+        precondition(value.isFinite, "MultiplicativeUncertainValue requires finite value, got \(value)")
+        precondition(multiplicativeError >= 1, "MultiplicativeUncertainValue requires multiplicativeError >= 1, got \(multiplicativeError)")
+        precondition(multiplicativeError.isFinite, "MultiplicativeUncertainValue requires finite multiplicativeError, got \(multiplicativeError)")
+
+        self.sign = value.sign
+        self.logAbs = UncertainValue(
+            Darwin.log(abs(value)),
+            absoluteError: Darwin.log(multiplicativeError)
+        )
+    }
+
+    /// The central value with sign applied.
+    public var value: Double {
+        let absValue = Darwin.exp(logAbs.value)
+        return sign == .minus ? -absValue : absValue
+    }
+
+    /// The multiplicative error factor.
+    public var multiplicativeError: Double {
+        Darwin.exp(logAbs.absoluteError)
+    }
+
+    /// Relative error as a fraction: multiplicativeError - 1.
+    public var relativeError: Double {
+        multiplicativeError - 1
+    }
+}
