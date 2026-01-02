@@ -20,6 +20,10 @@ let package = Package(
         .library(
             name: "MultiplicativeUncertainValue",
             targets: ["MultiplicativeUncertainValue"]
+        ),
+        .library(
+            name: "UncertainValueStatistics",
+            targets: ["UncertainValueStatistics"]
         )
     ],
     targets: [
@@ -34,6 +38,10 @@ let package = Package(
             name: "MultiplicativeUncertainValue",
             dependencies: ["UncertainValueCore"]
         ),
+        .target(
+            name: "UncertainValueStatistics",
+            dependencies: ["UncertainValueCore", "MultiplicativeUncertainValue"]
+        ),
         .testTarget(
             name: "UncertainValueCoreTests",
             dependencies: ["UncertainValueCore"]
@@ -45,6 +53,10 @@ let package = Package(
         .testTarget(
             name: "MultiplicativeUncertainValueTests",
             dependencies: ["MultiplicativeUncertainValue"]
+        ),
+        .testTarget(
+            name: "UncertainValueStatisticsTests",
+            dependencies: ["UncertainValueStatistics"]
         )
     ]
 )
