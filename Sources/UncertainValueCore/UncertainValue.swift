@@ -64,6 +64,11 @@ public struct UncertainValue: Hashable, Sendable, Codable {
     public var variance: Double {
         absoluteError * absoluteError
     }
+    
+    /// Absolute value of the central value.
+    public var absoluteValue: Double {
+        abs(value)
+    }
 }
 
 // MARK: - Common Constants

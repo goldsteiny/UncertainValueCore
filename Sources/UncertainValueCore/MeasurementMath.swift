@@ -45,6 +45,7 @@ public enum MeasurementMath {
     /// - Formula: delta(sin(x)) = |cos(x)| * delta(x)
     public static func sin(_ uv: UncertainValue) -> UncertainValue {
         let newValue = Darwin.sin(uv.value)
+        // Error propagation: δ(sin(x)) = |cos(x)| * δx
         let newAbsError = abs(Darwin.cos(uv.value)) * uv.absoluteError
         return UncertainValue(newValue, absoluteError: newAbsError)
     }
@@ -55,6 +56,7 @@ public enum MeasurementMath {
     /// - Formula: delta(cos(x)) = |sin(x)| * delta(x)
     public static func cos(_ uv: UncertainValue) -> UncertainValue {
         let newValue = Darwin.cos(uv.value)
+        // Error propagation: δ(cos(x)) = |sin(x)| * δx
         let newAbsError = abs(Darwin.sin(uv.value)) * uv.absoluteError
         return UncertainValue(newValue, absoluteError: newAbsError)
     }
@@ -108,7 +110,7 @@ public enum MeasurementMath {
         _ y: UncertainValue,
         using strategy: NormStrategy
     ) -> UncertainValue? {
-        guard abs(y.value) > 0 else { return nil }
+        guard y.absoluteValue > 0 else { return nil }
 
         let ratio = x.value / y.value
         let ratioSquared = ratio * ratio
@@ -176,29 +178,6 @@ public enum MeasurementMath {
         guard var normalized = normalize(values, by: first, using: strategy) else { return nil }
         normalized[0] = UncertainValue(1.0, absoluteError: 0.0)
         return normalized
-    }
-
-    // MARK: - Statistical Functions
-
-    /// Sums all values using the specified norm strategy.
-    public static func sum(_ values: [UncertainValue], using strategy: NormStrategy) -> UncertainValue {
-        values.sum(using: strategy)
-    }
-
-    /// Computes mean using the specified norm strategy.
-    public static func mean(_ values: [UncertainValue], using strategy: NormStrategy) -> UncertainValue? {
-        guard !values.isEmpty else { return nil }
-        return values.sum(using: strategy).dividing(by: Double(values.count))
-    }
-
-    /// Sample standard deviation of the central values.
-    /// Note: Always uses L2 norm in value calculation as this is the definition of standard deviation.
-    /// TODO: deprecate
-    public static func sampleStandardDeviation(_ values: [UncertainValue]) -> Double? {
-        guard values.count > 1 else { return nil }
-        let meanVal = values.map(\.value).reduce(0, +) / Double(values.count)
-        let diffs = values.map { $0.value - meanVal }
-        return norm2(diffs) / Darwin.sqrt(Double(values.count - 1))
     }
 
     /// Average step width between consecutive values using the specified norm strategy.

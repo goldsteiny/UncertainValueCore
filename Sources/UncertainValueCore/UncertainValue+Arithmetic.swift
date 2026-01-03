@@ -42,6 +42,11 @@ extension UncertainValue {
         
         return UncertainValue.withRelativeError(newValue, newRelError)
     }
+    
+    /// Absolute value of the central value (error unchanged).
+    public var absolute: UncertainValue {
+        UncertainValue(abs(value), absoluteError: absoluteError)
+    }
 
     /// Negates the value (error unchanged).
     public var negative: UncertainValue {

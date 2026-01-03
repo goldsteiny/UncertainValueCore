@@ -126,48 +126,6 @@ struct MeasurementMathTests {
         #expect(MeasurementMath.reciprocal(x) == nil)
     }
 
-    // MARK: - Sum/Mean with Explicit Norm
-
-    @Test func sumWithL1() {
-        let values = [
-            UncertainValue(10.0, absoluteError: 0.3),
-            UncertainValue(20.0, absoluteError: 0.4)
-        ]
-        let result = MeasurementMath.sum(values, using: .l1)
-
-        #expect(result.value == 30.0)
-        #expect(abs(result.absoluteError - 0.7) < 0.0001)
-    }
-
-    @Test func sumWithL2() {
-        let values = [
-            UncertainValue(10.0, absoluteError: 0.3),
-            UncertainValue(20.0, absoluteError: 0.4)
-        ]
-        let result = MeasurementMath.sum(values, using: .l2)
-
-        #expect(result.value == 30.0)
-        #expect(abs(result.absoluteError - 0.5) < 0.0001)
-    }
-
-    @Test func meanWithL2() {
-        let values = [
-            UncertainValue(10.0, absoluteError: 0.3),
-            UncertainValue(20.0, absoluteError: 0.4)
-        ]
-        let result = MeasurementMath.mean(values, using: .l2)
-
-        #expect(result != nil)
-        #expect(result!.value == 15.0)
-        // error = sum_error / count = 0.5 / 2 = 0.25
-        #expect(abs(result!.absoluteError - 0.25) < 0.0001)
-    }
-
-    @Test func meanEmptyReturnsNil() {
-        let values: [UncertainValue] = []
-        #expect(MeasurementMath.mean(values, using: .l2) == nil)
-    }
-
     // MARK: - Polynomial
 
     @Test func polynomialConstant() {
@@ -259,24 +217,6 @@ struct MeasurementMathTests {
     @Test func normalizeByFirstEmptyReturnsNil() {
         let values: [UncertainValue] = []
         #expect(MeasurementMath.normalizeByFirst(values, using: .l2) == nil)
-    }
-
-    // MARK: - Sample Standard Deviation
-
-    @Test func sampleStandardDeviation() {
-        // values: 2, 4, 4, 4, 5, 5, 7, 9 -> mean = 5, variance = 4, sd = 2
-        let values = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0].map {
-            UncertainValue($0, absoluteError: 0.0)
-        }
-        let result = MeasurementMath.sampleStandardDeviation(values)
-
-        #expect(result != nil)
-        #expect(abs(result! - 2.138) < 0.01)  // sample SD
-    }
-
-    @Test func sampleStandardDeviationSingleValueReturnsNil() {
-        let values = [UncertainValue(5.0, absoluteError: 0.0)]
-        #expect(MeasurementMath.sampleStandardDeviation(values) == nil)
     }
 
     // MARK: - Average Step Width
