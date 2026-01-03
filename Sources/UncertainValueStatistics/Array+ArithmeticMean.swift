@@ -34,17 +34,17 @@ extension Array where Element == Double {
     /// Uses normalization by max value for numerical stability with extreme values.
     /// - Returns: UncertainValue where value is the mean and absoluteError is the sample standard deviation.
     /// - Precondition: Array must contain at least 2 elements.
-    public func arithmeticMean() -> UncertainValue {
+    public func arithmeticMeanL2() -> UncertainValue {
         precondition(count >= 2, "Arithmetic mean requires at least 2 values for standard deviation")
 
-        return UncertainValue(valuesMean, absoluteError: sampleStandardDeviation())
+        return UncertainValue(valuesMean, absoluteError: sampleStandardDeviationL2())
     }
 
     /// Computes the arithmetic mean with sample standard deviation as uncertainty.
     /// Uses Apple's Accelerate framework (vDSP) for optimized computation.
     /// - Returns: UncertainValue where value is the mean and absoluteError is the sample standard deviation.
     /// - Precondition: Array must contain at least 2 elements.
-    public func arithmeticMean_vDSP() -> UncertainValue {
+    public func arithmeticMeanL2_vDSP() -> UncertainValue {
         precondition(count >= 2, "Arithmetic mean requires at least 2 values for standard deviation")
 
         let mean = vDSP.mean(self)
@@ -66,8 +66,8 @@ extension Array where Element == UncertainValue {
     /// Computes the arithmetic mean with error propagation using L2 norm.
     /// - Returns: Mean value with combined and scaled uncertainty.
     /// - Precondition: Array must not be empty.
-    public func arithmeticMean() -> UncertainValue {
+    public func arithmeticMeanL2() -> UncertainValue {
         precondition(!isEmpty, "Arithmetic mean requires at least 1 value")
-        return sum(using: .l2).dividing(by: Double(count))!
+        return mean(using: .l2)!
     }
 }

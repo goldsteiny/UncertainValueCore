@@ -79,12 +79,20 @@ extension Array where Element == UncertainValue {
     public func relativeErrorVectorLength(using strategy: NormStrategy) -> Double {
         norm(relativeErrors, using: strategy)
     }
-
+    
     /// Sums all values with error propagation using the specified norm.
     /// - Parameter strategy: The norm strategy for combining absolute errors.
     /// - Returns: Sum with combined uncertainty.
     public func sum(using strategy: NormStrategy) -> UncertainValue {
         UncertainValue(valuesSum, absoluteError: absoluteErrorVectorLength(using: strategy))
+    }
+    
+    /// Mea of all values with error propagation using the specified norm.
+    /// - Parameter strategy: The norm strategy for combining absolute errors.
+    /// - Returns: Sum with combined uncertainty.
+    public func mean(using strategy: NormStrategy) -> UncertainValue? {
+        guard count >= 1 else { return nil }
+        return sum(using: strategy).dividing(by: Double(count))!
     }
 
     /// Multiplies all values with error propagation using the specified norm.

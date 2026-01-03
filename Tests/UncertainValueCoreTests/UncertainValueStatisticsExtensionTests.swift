@@ -14,12 +14,12 @@ struct UncertainValueStatisticsExtensionTests {
 
     // MARK: - [UncertainValue] Arithmetic Mean Tests
 
-    @Test func arithmeticMean() {
+    @Test func arithmeticMeanL2() {
         let values = [
             UncertainValue(10.0, absoluteError: 0.3),
             UncertainValue(20.0, absoluteError: 0.4)
         ]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
 
         #expect(result.value == 15.0)
         // sum error L2: sqrt(0.3^2 + 0.4^2) = 0.5, then / 2 = 0.25
@@ -28,7 +28,7 @@ struct UncertainValueStatisticsExtensionTests {
 
     @Test func arithmeticMeanSingleElement() {
         let values = [UncertainValue(10.0, absoluteError: 0.5)]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
 
         #expect(result.value == 10.0)
         #expect(result.absoluteError == 0.5)
@@ -39,7 +39,7 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(-10.0, absoluteError: 0.3),
             UncertainValue(-20.0, absoluteError: 0.4)
         ]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
 
         #expect(result.value == -15.0)
         #expect(abs(result.absoluteError - 0.25) < 0.0001)
@@ -53,7 +53,7 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(4.0, absoluteError: 0.1),
             UncertainValue(5.0, absoluteError: 0.1)
         ]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
 
         #expect(result.value == 3.0)
         // sum error L2: sqrt(5 * 0.1^2) = sqrt(0.05), then / 5
@@ -69,7 +69,7 @@ struct UncertainValueStatisticsExtensionTests {
         // Sum of squares = 4 + 1 + 0 + 1 + 4 = 10
         // Sample variance = 10 / 4 = 2.5
         // Sample std dev = sqrt(2.5)
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - sqrt(2.5)) < 1e-10)
     }
 
@@ -79,13 +79,13 @@ struct UncertainValueStatisticsExtensionTests {
         // Sum of squares = 50
         // Sample variance = 50 / 1 = 50
         // Sample std dev = sqrt(50)
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - sqrt(50)) < 1e-10)
     }
 
     @Test func sampleStdDevIdenticalValues() {
         let values = [7.0, 7.0, 7.0, 7.0]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(result == 0.0)
     }
 
@@ -95,7 +95,7 @@ struct UncertainValueStatisticsExtensionTests {
         // Sum of squares = 25 + 9 + 1 + 1 + 9 + 25 = 70
         // Sample variance = 70 / 5 = 14
         // Sample std dev = sqrt(14)
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - sqrt(14)) < 1e-10)
     }
 
@@ -103,23 +103,23 @@ struct UncertainValueStatisticsExtensionTests {
         let scale = 1e50
         let values = [1.0 * scale, 2.0 * scale, 3.0 * scale]
         // Should scale linearly
-        let unscaled = [1.0, 2.0, 3.0].sampleStandardDeviation()
-        let result = values.sampleStandardDeviation()
+        let unscaled = [1.0, 2.0, 3.0].sampleStandardDeviationL2()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - unscaled * scale) < 1e40)
     }
 
     @Test func sampleStdDevTinyValues() {
         let scale = 1e-50
         let values = [1.0 * scale, 2.0 * scale, 3.0 * scale]
-        let unscaled = [1.0, 2.0, 3.0].sampleStandardDeviation()
-        let result = values.sampleStandardDeviation()
+        let unscaled = [1.0, 2.0, 3.0].sampleStandardDeviationL2()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - unscaled * scale) < 1e-60)
     }
 
     @Test func sampleStdDevSymmetricAroundZero() {
         let values = [-2.0, -1.0, 0.0, 1.0, 2.0]
         // Mean = 0, sum of squares = 10, sample var = 10/4 = 2.5
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(abs(result - sqrt(2.5)) < 1e-10)
     }
 
@@ -127,34 +127,34 @@ struct UncertainValueStatisticsExtensionTests {
 
     @Test func doubleArithmeticMeanValue() {
         let values = [1.0, 2.0, 3.0, 4.0, 5.0]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
         #expect(result.value == 3.0)
     }
 
     @Test func doubleArithmeticMeanErrorIsSampleStdDev() {
         let values = [1.0, 2.0, 3.0, 4.0, 5.0]
-        let result = values.arithmeticMean()
-        let expectedStdDev = values.sampleStandardDeviation()
+        let result = values.arithmeticMeanL2()
+        let expectedStdDev = values.sampleStandardDeviationL2()
         #expect(abs(result.absoluteError - expectedStdDev) < 1e-10)
     }
 
     @Test func doubleArithmeticMeanIdenticalValues() {
         let values = [5.0, 5.0, 5.0]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
         #expect(result.value == 5.0)
         #expect(result.absoluteError == 0.0)
     }
 
     @Test func doubleArithmeticMeanNegativeValues() {
         let values = [-10.0, -20.0, -30.0]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
         #expect(result.value == -20.0)
-        #expect(result.absoluteError == values.sampleStandardDeviation())
+        #expect(result.absoluteError == values.sampleStandardDeviationL2())
     }
 
     @Test func doubleArithmeticMeanMixedSigns() {
         let values = [-10.0, 0.0, 10.0]
-        let result = values.arithmeticMean()
+        let result = values.arithmeticMeanL2()
         #expect(result.value == 0.0)
         #expect(result.absoluteError == 10.0)  // sqrt(200/2) = 10
     }
@@ -167,10 +167,10 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(2.0, absoluteError: 0.1),
             UncertainValue(3.0, absoluteError: 0.1)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
 
         // Value should match [Double] version
-        let expectedValue = values.values.sampleStandardDeviation()
+        let expectedValue = values.values.sampleStandardDeviationL2()
         #expect(abs(result.value - expectedValue) < 1e-10)
 
         // Error calculation:
@@ -187,7 +187,7 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(5.0, absoluteError: 0.1),
             UncertainValue(5.0, absoluteError: 0.1)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(result.value == 0.0)
     }
 
@@ -199,7 +199,7 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(5.0, absoluteError: 0.5),
             UncertainValue(5.0, absoluteError: 0.5)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
         #expect(result.absoluteError == 0.0)
     }
 
@@ -209,7 +209,7 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(0.0, absoluteError: 0.1),
             UncertainValue(10.0, absoluteError: 0.1)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
 
         // Value = sqrt(50) ≈ 7.07
         #expect(abs(result.value - sqrt(50)) < 1e-10)
@@ -230,9 +230,9 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(1.0, absoluteError: 0.1),
             UncertainValue(2.0, absoluteError: 0.1)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
 
-        let expectedValue = values.values.sampleStandardDeviation()
+        let expectedValue = values.values.sampleStandardDeviationL2()
         #expect(abs(result.value - expectedValue) < 1e-10)
 
         // Error calculation:
@@ -255,8 +255,8 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(3.0, absoluteError: 1.0)
         ]
 
-        let smallResult = smallErrors.sampleStandardDeviation()
-        let largeResult = largeErrors.sampleStandardDeviation()
+        let smallResult = smallErrors.sampleStandardDeviationL2()
+        let largeResult = largeErrors.sampleStandardDeviationL2()
 
         // Same central value
         #expect(smallResult.value == largeResult.value)
@@ -278,20 +278,20 @@ struct UncertainValueStatisticsExtensionTests {
             UncertainValue(2.0, absoluteError: 0.0),
             UncertainValue(3.0, absoluteError: 0.0)
         ]
-        let result = values.sampleStandardDeviation()
+        let result = values.sampleStandardDeviationL2()
 
         // With zero input errors, output error should be zero
         #expect(result.absoluteError == 0.0)
         // But value should still be computed
-        #expect(result.value == values.values.sampleStandardDeviation())
+        #expect(result.value == values.values.sampleStandardDeviationL2())
     }
 
     // MARK: - Cross-validation Tests
 
     @Test func arithmeticMeanMatchesvDSP() {
         let values = [1.5, 2.7, 3.2, 4.8, 5.1]
-        let custom = values.arithmeticMean()
-        let vdsp = values.arithmeticMean_vDSP()
+        let custom = values.arithmeticMeanL2()
+        let vdsp = values.arithmeticMeanL2_vDSP()
 
         #expect(abs(custom.value - vdsp.value) < 1e-10)
         #expect(abs(custom.absoluteError - vdsp.absoluteError) < 1e-10)
@@ -299,8 +299,8 @@ struct UncertainValueStatisticsExtensionTests {
 
     @Test func arithmeticMeanMatchesvDSPExtremeValues() {
         let values = [1e100, 2e100, 3e100]
-        let custom = values.arithmeticMean()
-        let vdsp = values.arithmeticMean_vDSP()
+        let custom = values.arithmeticMeanL2()
+        let vdsp = values.arithmeticMeanL2_vDSP()
 
         // Both should be finite
         #expect(custom.value.isFinite)

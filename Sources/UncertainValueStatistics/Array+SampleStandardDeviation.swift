@@ -14,7 +14,7 @@ extension Array where Element == Double {
     /// Formula: sqrt(sum((x - mean)^2) / (n-1)) = norm2(deviations) / sqrt(n-1)
     /// - Returns: Sample standard deviation.
     /// - Precondition: Array must contain at least 2 elements.
-    public func sampleStandardDeviation() -> Double {
+    public func sampleStandardDeviationL2() -> Double {
         precondition(count >= 2, "Sample standard deviation requires at least 2 values")
 
         let n = Double(count)
@@ -31,13 +31,13 @@ extension Array where Element == UncertainValue {
     /// Error: propagated from individual measurement errors using L2 norm.
     /// - Returns: Sample standard deviation with uncertainty.
     /// - Precondition: Array must contain at least 2 elements.
-    public func sampleStandardDeviation() -> UncertainValue {
+    public func sampleStandardDeviationL2() -> UncertainValue {
         precondition(count >= 2, "Sample standard deviation requires at least 2 values")
 
         let n = Double(count)
         let vals = values
 
-        let resultValue = vals.sampleStandardDeviation()
+        let resultValue = vals.sampleStandardDeviationL2()
 
         let mean = vals.valuesMean
         let scaledDeviations = vals.map { ($0 - mean) / Darwin.sqrt(n - 1) }
