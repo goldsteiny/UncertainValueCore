@@ -327,20 +327,26 @@ struct UncertainValueTests {
         #expect(abs(result.relativeError - 0.0640) < 0.001)
     }
 
-    @Test func division() {
+    @Test func division() throws {
         let x = UncertainValue.withRelativeError(10.0, 0.05)
         let y = UncertainValue.withRelativeError(5.0, 0.04)
-        let result = x.dividing(by: y, using: .l2)
+        let result = try x.dividing(by: y, using: .l2)
 
-        #expect(result != nil)
-        #expect(result!.value == 2.0)
-        #expect(abs(result!.relativeError - 0.0640) < 0.001)
+        #expect(result.value == 2.0)
+        #expect(abs(result.relativeError - 0.0640) < 0.001)
     }
 
-    @Test func divisionByZeroReturnsNil() {
+    @Test func divisionByZeroThrows() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         let zero = UncertainValue(0.0, absoluteError: 0.0)
-        #expect(x.dividing(by: zero, using: .l2) == nil)
+        do {
+            _ = try x.dividing(by: zero, using: .l2)
+            #expect(false)
+        } catch let error as UncertainValueError {
+            #expect(error == .divisionByZero)
+        } catch {
+            #expect(false)
+        }
     }
 
     @Test func power() {
@@ -406,18 +412,24 @@ struct UncertainValueTests {
         #expect(neg.absoluteError == 0.5)
     }
 
-    @Test func reciprocal() {
+    @Test func reciprocal() throws {
         let x = UncertainValue.withRelativeError(4.0, 0.05)
-        let rec = x.reciprocal
+        let rec = try x.reciprocal
 
-        #expect(rec != nil)
-        #expect(rec!.value == 0.25)
-        #expect(abs(rec!.relativeError - 0.05) < 0.001)
+        #expect(rec.value == 0.25)
+        #expect(abs(rec.relativeError - 0.05) < 0.001)
     }
 
-    @Test func reciprocalOfZeroReturnsNil() {
+    @Test func reciprocalOfZeroThrows() {
         let zero = UncertainValue(0.0, absoluteError: 0.0)
-        #expect(zero.reciprocal == nil)
+        do {
+            _ = try zero.reciprocal
+            #expect(false)
+        } catch let error as UncertainValueError {
+            #expect(error == .divisionByZero)
+        } catch {
+            #expect(false)
+        }
     }
 
     @Test func exponentiationOperator() {

@@ -12,7 +12,14 @@ import UncertainValueCore
 // MARK: - Core Type
 
 /// Represents a non-zero value with multiplicative uncertainty in log-domain.
-public final class MultiplicativeUncertainValue {
+///
+/// Unlike `UncertainValue`, this type cannot represent zero, so operations like
+/// `reciprocal` and `dividing` always succeed without throwing.
+///
+/// Conforms to `UncertainMultiplicative` to share protocol-derived list operations.
+public final class MultiplicativeUncertainValue: Sendable, UncertainMultiplicative {
+    /// Scalar type for protocol conformance.
+    public typealias Scalar = Double
     /// Sign of the original value.
     public let sign: FloatingPointSign
 
@@ -65,4 +72,12 @@ public final class MultiplicativeUncertainValue {
     public var relativeError: Double {
         multiplicativeError - 1
     }
+}
+
+// MARK: - Common Constants
+
+extension MultiplicativeUncertainValue {
+    /// The multiplicative identity (one with no uncertainty).
+    /// - value = 1.0, multiplicativeError = 1.0
+    public static let one = MultiplicativeUncertainValue.exp(.zero)
 }

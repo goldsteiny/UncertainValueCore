@@ -63,7 +63,7 @@ public enum MeasurementMath {
 
     /// Reciprocal (1/x) with error propagation.
     public static func reciprocal(_ uv: UncertainValue) -> UncertainValue? {
-        uv.reciprocal
+        try? uv.reciprocal
     }
 
     // MARK: - Multi-Input Functions (require norm strategy)
@@ -165,7 +165,7 @@ public enum MeasurementMath {
         by denominator: UncertainValue,
         using strategy: NormStrategy
     ) -> [UncertainValue]? {
-        let normalized = values.compactMap { $0.dividing(by: denominator, using: strategy) }
+        let normalized = values.compactMap { try? $0.dividing(by: denominator, using: strategy) }
         return normalized.count == values.count ? normalized : nil
     }
 

@@ -29,7 +29,7 @@ extension UncertainValue {
     }
 
     public static func / (lhs: UncertainValue, rhs: UncertainValue) -> UncertainValue? {
-        lhs.dividing(by: rhs, using: .l2)
+        try? lhs.dividing(by: rhs, using: .l2)
     }
 }
 
@@ -61,7 +61,7 @@ extension UncertainValue {
     }
 
     public static func / (lhs: Double, rhs: UncertainValue) -> UncertainValue? {
-        rhs.reciprocal?.multiplying(by: lhs)
+        try? rhs.reciprocal.multiplying(by: lhs)
     }
 
     public static func / (lhs: UncertainValue, rhs: Double) -> UncertainValue? {

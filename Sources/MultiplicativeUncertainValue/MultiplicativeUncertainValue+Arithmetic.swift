@@ -35,6 +35,9 @@ extension MultiplicativeUncertainValue {
     }
 
     /// Reciprocal (1/x) in log-space.
+    ///
+    /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
+    ///
     /// - Returns: New value with negated logAbs, same sign.
     public var reciprocal: MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(logAbs: logAbs.negative, sign: sign)
@@ -44,21 +47,28 @@ extension MultiplicativeUncertainValue {
 // MARK: - Binary Operations
 
 extension MultiplicativeUncertainValue {
-    /// Multiplies by another UncertainValue using the specified norm strategy.
+    /// Multiplies by another MultiplicativeUncertainValue using the specified norm strategy.
+    ///
+    /// Delegates to `MultiplicativeUncertainValue.product([self, other], using:)`.
+    ///
     /// - Parameters:
     ///   - other: Value to multiply by.
-    ///   - strategy: Norm strategy for combining relative errors.
+    ///   - strategy: Norm strategy for combining log-space errors.
+    /// - Returns: Product with combined uncertainty.
     public func multiplying(_ other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
-        [self, other].product(using: strategy)
+        MultiplicativeUncertainValue.product([self, other], using: strategy)
     }
 
-    /// Divides by another UncertainValue using the specified norm strategy.
+    /// Divides by another MultiplicativeUncertainValue using the specified norm strategy.
+    ///
+    /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
+    ///
     /// - Parameters:
     ///   - other: Divisor value.
-    ///   - strategy: Norm strategy for combining relative errors.
+    ///   - strategy: Norm strategy for combining log-space errors.
     /// - Returns: Result of division.
     public func dividing(by other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
-        return other.reciprocal.multiplying(self, using: strategy)
+        multiplying(other.reciprocal, using: strategy)
     }
 }
 

@@ -11,7 +11,12 @@ import Foundation
 
 /// A value with associated 1-sigma uncertainty.
 /// Represents measurements with error for physics lab calculations.
-public struct UncertainValue: Hashable, Sendable, Codable {
+///
+/// Conforms to both `UncertainAdditive` and `UncertainMultiplicative` protocols,
+/// enabling protocol-derived array operations like `sum(using:)` and `product(using:)`.
+public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, UncertainMultiplicative {
+    /// Scalar type for protocol conformance.
+    public typealias Scalar = Double
     /// The central value.
     public let value: Double
 
@@ -71,6 +76,64 @@ public struct UncertainValue: Hashable, Sendable, Codable {
     }
 }
 
+
+// MARK: - Single-Value Operations
+
+extension UncertainValue {
+    /// Raises value to a real power with error propagation.
+    /// - Parameter p: The exponent.
+    /// - Returns: Result with propagated error, or nil if base <= 0 or non-finite.
+    public func raised(to p: Double) -> UncertainValue? {
+        guard value > 0 else { return nil }
+        let newValue = pow(value, p)
+        guard newValue.isFinite else { return nil }
+
+        let newRelError = abs(p) * relativeError
+        guard newRelError.isFinite else { return nil }
+
+        return UncertainValue.withRelativeError(newValue, newRelError)
+    }
+
+    /// Raises value to an integer power (allows negative bases).
+    /// - Parameter n: Integer exponent.
+    /// - Returns: Result with propagated error, or nil if invalid (e.g., 0^negative, non-finite).
+    public func raised(to n: Int) -> UncertainValue? {
+        if value == 0 {
+            guard absoluteError == 0, n > 0 else { return nil }
+            return UncertainValue(0.0, absoluteError: 0.0)
+        }
+
+        let newValue = pow(value, Double(n))
+        guard newValue.isFinite else { return nil }
+
+        let newRelError = abs(Double(n)) * relativeError
+        guard newRelError.isFinite else { return nil }
+
+        return UncertainValue.withRelativeError(newValue, newRelError)
+    }
+
+    /// Absolute value of the central value (error unchanged).
+    public var absolute: UncertainValue {
+        UncertainValue(abs(value), absoluteError: absoluteError)
+    }
+
+    /// Negates the value (error unchanged).
+    public var negative: UncertainValue {
+        UncertainValue(-value, absoluteError: absoluteError)
+    }
+
+    /// Computes reciprocal (1/x) with error propagation.
+    /// - Returns: Reciprocal with propagated error.
+    /// - Throws: `UncertainValueError.divisionByZero` when value is 0.
+    /// - Formula: relError(1/x) = relError(x)
+    public var reciprocal: UncertainValue {
+        get throws {
+            guard value != 0 else { throw UncertainValueError.divisionByZero }
+            return UncertainValue.withRelativeError(1 / value, relativeError)
+        }
+    }
+}
+
 // MARK: - Common Constants
 
 extension UncertainValue {
@@ -85,4 +148,40 @@ extension UncertainValue {
 
     /// Euler's number (e) with no uncertainty.
     public static let e = UncertainValue(M_E, absoluteError: 0)
+}
+
+// MARK: - Protocol-Required Static Methods
+
+extension UncertainValue {
+    /// Sums an array of values with error propagation using the specified norm.
+    ///
+    /// This is the primitive operation for the `UncertainAdditive` protocol.
+    /// Uses direct formula: sum.value = Σ values, sum.error = norm(errors).
+    ///
+    /// - Parameters:
+    ///   - values: Array of values to sum.
+    ///   - strategy: The norm strategy for combining absolute errors.
+    /// - Returns: Sum with combined uncertainty. Empty array returns `.zero`.
+    public static func sum(_ values: [UncertainValue], using strategy: NormStrategy) -> UncertainValue {
+        guard !values.isEmpty else { return .zero }
+        let sumValue = values.map(\.value).sum
+        let combinedError = norm(values.map(\.absoluteError), using: strategy)
+        return UncertainValue(sumValue, absoluteError: combinedError)
+    }
+
+    /// Computes the product of an array of values with error propagation using the specified norm.
+    ///
+    /// This is the primitive operation for the `UncertainMultiplicative` protocol.
+    /// Uses direct formula: product.value = Π values, product.relError = norm(relErrors).
+    ///
+    /// - Parameters:
+    ///   - values: Array of values to multiply.
+    ///   - strategy: The norm strategy for combining relative errors.
+    /// - Returns: Product with combined uncertainty. Empty array returns `.one`.
+    public static func product(_ values: [UncertainValue], using strategy: NormStrategy) -> UncertainValue {
+        guard !values.isEmpty else { return .one }
+        let productValue = values.map(\.value).product
+        let combinedRelError = norm(values.map(\.relativeError), using: strategy)
+        return UncertainValue.withRelativeError(productValue, combinedRelError)
+    }
 }
