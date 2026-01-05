@@ -2,6 +2,19 @@
 
 A Swift library for arithmetic with measurement uncertainties. Propagates 1-sigma errors through calculations using configurable norm strategies (L1, L2, Lp), suitable for physics lab data analysis and scientific computing.
 
+## Platform Support
+
+- Apple-only: iOS 17+, macOS 14+
+- `UncertainValueStatistics` uses Accelerate (vDSP) for optimized statistics
+- Uses Darwin for math primitives
+
+## Modules
+
+- `UncertainValueCore`: core types and explicit norm strategy APIs
+- `UncertainValueConvenience`: L2-only operator syntax for ergonomic use
+- `UncertainValueStatistics`: arithmetic/geometric mean and standard deviation helpers (L2)
+- `MultiplicativeUncertainValue`: log-domain multiplicative uncertainty representation
+
 ## Installation
 
 ### Swift Package Manager
