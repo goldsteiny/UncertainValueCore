@@ -13,20 +13,16 @@ import UncertainValueCore
 extension MultiplicativeUncertainValue {
     /// Absolute value |x|.
     /// - Returns: New value with same logAbs, sign forced to .plus.
-    public var absValue: MultiplicativeUncertainValue {
+    public var absolute: MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(logAbs: logAbs, sign: .plus)
     }
-    
-    /// Whether the value is positive.
-    public var isPositive: Bool {
-        sign == .plus
-    }
-    
-    /// Whether the value is negative.
-    public var isNegative: Bool {
-        sign == .minus
-    }
 
+    /// Absolute value |x|.
+    /// - Returns: New value with same logAbs, sign forced to .plus.
+    public var absValue: MultiplicativeUncertainValue {
+        absolute
+    }
+    
     /// Negation (-x).
     /// - Returns: New value with flipped sign, same logAbs.
     public var negative: MultiplicativeUncertainValue {
@@ -34,31 +30,24 @@ extension MultiplicativeUncertainValue {
         return MultiplicativeUncertainValue(logAbs: logAbs, sign: newSign)
     }
 
+    /// Reciprocal (1/x) in log-space, assuming a non-zero value.
+    ///
+    /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
+    public var reciprocalAssumingNonZero: MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue(logAbs: logAbs.negative, sign: sign)
+    }
+
     /// Reciprocal (1/x) in log-space.
     ///
     /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
-    ///
-    /// - Returns: New value with negated logAbs, same sign.
     public var reciprocal: MultiplicativeUncertainValue {
-        MultiplicativeUncertainValue(logAbs: logAbs.negative, sign: sign)
+        reciprocalAssumingNonZero
     }
 }
 
 // MARK: - Binary Operations
 
 extension MultiplicativeUncertainValue {
-    /// Multiplies by another MultiplicativeUncertainValue using the specified norm strategy.
-    ///
-    /// Delegates to `MultiplicativeUncertainValue.product([self, other], using:)`.
-    ///
-    /// - Parameters:
-    ///   - other: Value to multiply by.
-    ///   - strategy: Norm strategy for combining log-space errors.
-    /// - Returns: Product with combined uncertainty.
-    public func multiplying(_ other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
-        MultiplicativeUncertainValue.product([self, other], using: strategy)
-    }
-
     /// Divides by another MultiplicativeUncertainValue using the specified norm strategy.
     ///
     /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
@@ -68,7 +57,7 @@ extension MultiplicativeUncertainValue {
     ///   - strategy: Norm strategy for combining log-space errors.
     /// - Returns: Result of division.
     public func dividing(by other: MultiplicativeUncertainValue, using strategy: NormStrategy) -> MultiplicativeUncertainValue {
-        multiplying(other.reciprocal, using: strategy)
+        multiplying(other.reciprocalAssumingNonZero, using: strategy)
     }
 }
 
@@ -108,7 +97,7 @@ extension MultiplicativeUncertainValue {
     /// - Returns: Result in log-space, or nil if result is non-finite.
     /// - Note: Sign is .plus if n is even, original sign if n is odd.
     public func raised(to n: Int) -> MultiplicativeUncertainValue? {
-        guard let absPowered = absValue.raised(to: Double(n)) else { return nil }
+        guard let absPowered = absolute.raised(to: Double(n)) else { return nil }
         let newSign: FloatingPointSign = (n % 2 == 0) ? .plus : sign
         return MultiplicativeUncertainValue(logAbs: absPowered.logAbs, sign: newSign)
     }

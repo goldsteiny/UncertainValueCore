@@ -52,7 +52,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MultiplicativeUncertainValueTests",
-            dependencies: ["MultiplicativeUncertainValue"]
+            dependencies: ["MultiplicativeUncertainValue", "UncertainValueConvenience"]
         ),
         .testTarget(
             name: "UncertainValueStatisticsTests",

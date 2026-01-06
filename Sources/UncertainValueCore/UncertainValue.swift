@@ -12,9 +12,9 @@ import Foundation
 /// A value with associated 1-sigma uncertainty.
 /// Represents measurements with error for physics lab calculations.
 ///
-/// Conforms to both `UncertainAdditive` and `UncertainMultiplicative` protocols,
+/// Conforms to `UncertainAdditive` and `InvertibleUncertainMultiplicative`,
 /// enabling protocol-derived array operations like `sum(using:)` and `product(using:)`.
-public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, UncertainMultiplicative {
+public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, InvertibleUncertainMultiplicative, SignMagnitudeProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// The central value.
@@ -73,6 +73,14 @@ public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, Un
     /// Absolute value of the central value.
     public var absoluteValue: Double {
         abs(value)
+    }
+
+    /// Sign of the central value.
+    public var signum: Signum {
+        if value == 0 {
+            return .zero
+        }
+        return value.sign == .minus ? .negative : .positive
     }
 }
 

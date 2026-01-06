@@ -7,6 +7,7 @@
 
 import XCTest
 import Darwin
+import UncertainValueConvenience
 @testable import MultiplicativeUncertainValue
 @testable import UncertainValueCore
 

@@ -2,36 +2,12 @@
 //  UncertainValue+Operators.swift
 //  UncertainValueConvenience
 //
-//  Convenience operators that use L2 norm (standard Gaussian error propagation).
-//  Import this module for ergonomic operator syntax when L2 is acceptable.
-//
-//  For explicit norm control, use the core methods:
-//    - a.adding(b, using: strategy)
-//    - a.multiplying(b, using: strategy)
-//    - etc.
+//  Convenience operators for scaling UncertainValue by constants.
+//  Same-type operators are defined on protocols in `ProtocolOperators.swift`
+//  and use L2 norm (standard Gaussian error propagation).
 //
 
 import UncertainValueCore
-
-// MARK: - Binary Operators (UncertainValue, UncertainValue)
-
-extension UncertainValue {
-    public static func + (lhs: UncertainValue, rhs: UncertainValue) -> UncertainValue {
-        lhs.adding(rhs, using: .l2)
-    }
-
-    public static func - (lhs: UncertainValue, rhs: UncertainValue) -> UncertainValue {
-        lhs.subtracting(rhs, using: .l2)
-    }
-
-    public static func * (lhs: UncertainValue, rhs: UncertainValue) -> UncertainValue {
-        lhs.multiplying(rhs, using: .l2)
-    }
-
-    public static func / (lhs: UncertainValue, rhs: UncertainValue) -> UncertainValue? {
-        try? lhs.dividing(by: rhs, using: .l2)
-    }
-}
 
 // MARK: - Mixed Operators (Double, UncertainValue)
 
@@ -61,7 +37,7 @@ extension UncertainValue {
     }
 
     public static func / (lhs: Double, rhs: UncertainValue) -> UncertainValue? {
-        try? rhs.reciprocal.multiplying(by: lhs)
+        rhs.reciprocalOrNil?.multiplying(by: lhs)
     }
 
     public static func / (lhs: UncertainValue, rhs: Double) -> UncertainValue? {

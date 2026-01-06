@@ -2,7 +2,7 @@
 //  UncertainMultiplicative.swift
 //  UncertainValueCore
 //
-//  Protocol for types supporting multiplicative operations with uncertainty propagation.
+//  Protocols for multiplicative operations with uncertainty propagation.
 //
 
 import Foundation
@@ -12,27 +12,19 @@ import Foundation
 /// Protocol for types that support multiplicative operations with uncertainty propagation.
 ///
 /// Conforming types represent values with associated uncertainty that can be
-/// combined multiplicatively. The norm strategy determines how independent uncertainties
-/// are combined when multiplying values.
+/// combined multiplicatively. The norm strategy determines how independent
+/// uncertainties are combined when multiplying values.
 ///
 /// **Design:** The static `product(_:using:)` method is the primitive operation.
-/// Binary `multiplying` and `dividing` are provided as protocol extension defaults
-/// that delegate to the list operation. This preserves numerical stability by
+/// Binary `multiplying` is provided as a protocol extension default that
+/// delegates to the list operation. This preserves numerical stability by
 /// allowing direct computation over all n values at once.
-///
-/// - Note: Additive and multiplicative protocols are intentionally separate
-///   to avoid over-constraining types.
 public protocol UncertainMultiplicative: Sendable {
     /// The scalar type used for exponents and the norm strategy parameter.
     associatedtype Scalar: BinaryFloatingPoint
 
     /// The multiplicative identity (one with no uncertainty).
     static var one: Self { get }
-
-    /// Computes the reciprocal (1/x) with error propagation.
-    /// - Returns: Reciprocal with propagated error.
-    /// - Throws: `UncertainValueError.divisionByZero` when the value is zero.
-    var reciprocal: Self { get throws }
 
     /// Raises the value to a scalar power with error propagation.
     /// - Parameter power: The exponent.
@@ -66,7 +58,22 @@ public extension UncertainMultiplicative {
     func multiplying(_ other: Self, using strategy: NormStrategy) -> Self {
         Self.product([self, other], using: strategy)
     }
+}
 
+// MARK: - InvertibleUncertainMultiplicative Protocol
+
+/// Protocol for multiplicative types that can be inverted (reciprocal/division).
+///
+/// Types that can represent zero should throw `UncertainValueError.divisionByZero`
+/// when the reciprocal or division is undefined.
+public protocol InvertibleUncertainMultiplicative: UncertainMultiplicative {
+    /// Computes the reciprocal (1/x) with error propagation.
+    /// - Returns: Reciprocal with propagated error.
+    /// - Throws: `UncertainValueError.divisionByZero` when the value is zero.
+    var reciprocal: Self { get throws }
+}
+
+public extension InvertibleUncertainMultiplicative {
     /// Divides by another value using the specified norm strategy.
     /// - Parameters:
     ///   - other: Divisor value.
@@ -76,6 +83,45 @@ public extension UncertainMultiplicative {
     @inlinable
     func dividing(by other: Self, using strategy: NormStrategy) throws -> Self {
         try multiplying(other.reciprocal, using: strategy)
+    }
+
+    /// Optional convenience for reciprocal.
+    @inlinable
+    var reciprocalOrNil: Self? {
+        try? reciprocal
+    }
+
+    /// Optional convenience for division.
+    @inlinable
+    func dividingOrNil(by other: Self, using strategy: NormStrategy) -> Self? {
+        try? dividing(by: other, using: strategy)
+    }
+}
+
+// MARK: - NonZeroInvertibleUncertainMultiplicative Protocol
+
+/// Protocol for multiplicative types that cannot represent zero.
+///
+/// These types can provide non-throwing inversion APIs while still conforming
+/// to the throwing `InvertibleUncertainMultiplicative` requirements.
+public protocol NonZeroInvertibleUncertainMultiplicative: InvertibleUncertainMultiplicative {
+    /// Computes the reciprocal (1/x) assuming the value is non-zero.
+    var reciprocalAssumingNonZero: Self { get }
+}
+
+public extension NonZeroInvertibleUncertainMultiplicative {
+    /// Default throwing reciprocal implementation for non-zero types.
+    @inlinable
+    var reciprocal: Self {
+        get throws {
+            reciprocalAssumingNonZero
+        }
+    }
+
+    /// Non-throwing division for non-zero types.
+    @inlinable
+    func dividingAssumingNonZero(by other: Self, using strategy: NormStrategy) -> Self {
+        multiplying(other.reciprocalAssumingNonZero, using: strategy)
     }
 }
 

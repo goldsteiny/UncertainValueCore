@@ -16,8 +16,8 @@ import UncertainValueCore
 /// Unlike `UncertainValue`, this type cannot represent zero, so operations like
 /// `reciprocal` and `dividing` always succeed without throwing.
 ///
-/// Conforms to `UncertainMultiplicative` to share protocol-derived list operations.
-public final class MultiplicativeUncertainValue: Sendable, UncertainMultiplicative {
+/// Conforms to `NonZeroInvertibleUncertainMultiplicative` to share protocol-derived list operations.
+public struct MultiplicativeUncertainValue: Sendable, NonZeroInvertibleUncertainMultiplicative, SignMagnitudeProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// Sign of the original value.
@@ -71,6 +71,11 @@ public final class MultiplicativeUncertainValue: Sendable, UncertainMultiplicati
     /// Relative error as a fraction: multiplicativeError - 1.
     public var relativeError: Double {
         multiplicativeError - 1
+    }
+
+    /// Sign of the value (never zero).
+    public var signum: Signum {
+        sign == .minus ? .negative : .positive
     }
 }
 

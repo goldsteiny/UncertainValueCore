@@ -2,23 +2,11 @@
 //  MultiplicativeUncertainValue+Operators.swift
 //  MultiplicativeUncertainValue
 //
-//  Convenience operators using L2 norm.
+//  Convenience operators for scaling by constants.
 //
 
 import Foundation
 import UncertainValueCore
-
-// MARK: - Binary Operators (MUV, MUV)
-
-extension MultiplicativeUncertainValue {
-    public static func * (lhs: MultiplicativeUncertainValue, rhs: MultiplicativeUncertainValue) -> MultiplicativeUncertainValue {
-        lhs.multiplying(rhs, using: .l2)
-    }
-
-    public static func / (lhs: MultiplicativeUncertainValue, rhs: MultiplicativeUncertainValue) -> MultiplicativeUncertainValue {
-        lhs.dividing(by: rhs, using: .l2)
-    }
-}
 
 // MARK: - Mixed Operators (Double, MUV)
 
