@@ -53,7 +53,7 @@ struct OperatorTests {
 
     @Test func divisionByZeroReturnsNil() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
-        let zero = UncertainValue(0.0, absoluteError: 0.0)
+        let zero = UncertainValue.zero
         #expect(x / zero == nil)
     }
 

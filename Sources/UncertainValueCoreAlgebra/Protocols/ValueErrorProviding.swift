@@ -26,6 +26,11 @@ public protocol RelativeErrorProviding: ValueProviding {
 }
 
 public extension RelativeErrorProviding {
+    /// Considered error-free iff. relative error is 0.
+    var isErrorFree: Bool {
+        relativeError == 0.0
+    }
+    
     /// Estimated absolute error derived from relative error.
     var absoluteErrorEstimate: Scalar {
         abs(value) * relativeError

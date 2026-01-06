@@ -90,7 +90,7 @@ extension UncertainValue {
     public func raised(to p: Double) -> UncertainValue? {
         if value == 0 {
             guard absoluteError == 0, p > 0 else { return nil }
-            return UncertainValue(0.0, absoluteError: 0.0)
+            return .zero
         }
 
         guard value > 0 else { return nil }

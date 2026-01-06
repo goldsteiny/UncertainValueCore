@@ -177,7 +177,7 @@ public enum UncertainValueMath {
     ) -> [UncertainValue]? {
         guard let first = values.first else { return nil }
         guard var normalized = normalize(values, by: first, using: strategy) else { return nil }
-        normalized[0] = UncertainValue(1.0, absoluteError: 0.0)
+        normalized[0] = UncertainValue.one
         return normalized
     }
 

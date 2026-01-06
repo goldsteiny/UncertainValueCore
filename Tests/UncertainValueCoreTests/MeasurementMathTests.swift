@@ -27,7 +27,7 @@ struct UncertainValueMathTests {
     }
 
     @Test func logZeroReturnsNil() {
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let x = UncertainValue.zero
         #expect(UncertainValueMath.log(x) == nil)
     }
 
@@ -122,7 +122,7 @@ struct UncertainValueMathTests {
     }
 
     @Test func reciprocalZeroReturnsNil() {
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let x = UncertainValue.zero
         #expect(UncertainValueMath.reciprocal(x) == nil)
     }
 
@@ -160,7 +160,7 @@ struct UncertainValueMathTests {
     @Test func polynomialWithNegativeX() {
         // P(x) = 1 + 2x + 3x^2 at x = -2: 1 + 2(-2) + 3(4) = 1 - 4 + 12 = 9
         let coeffs = [
-            UncertainValue(1.0, absoluteError: 0.0),
+            UncertainValue.one,
             UncertainValue(2.0, absoluteError: 0.0),
             UncertainValue(3.0, absoluteError: 0.0)
         ]
@@ -178,7 +178,7 @@ struct UncertainValueMathTests {
             UncertainValue(2.0, absoluteError: 0.1),
             UncertainValue(3.0, absoluteError: 0.1)
         ]
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let x = UncertainValue.zero
         let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)

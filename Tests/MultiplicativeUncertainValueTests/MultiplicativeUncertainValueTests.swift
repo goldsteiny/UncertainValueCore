@@ -150,7 +150,7 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
     }
 
     func testConversionFromExactZeroReturnsNil() {
-        let uv = UncertainValue(0.0, absoluteError: 0.0)
+        let uv = UncertainValue.zero
         let muv = uv.asMultiplicative
 
         XCTAssertNil(muv, "Converting exact zero should return nil")

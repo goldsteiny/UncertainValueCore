@@ -274,7 +274,7 @@ struct UncertainValueStatisticsExtensionTests {
 
     @Test func uncertainValueSampleStdDevZeroInputErrors() {
         let values = [
-            UncertainValue(1.0, absoluteError: 0.0),
+            UncertainValue.one,
             UncertainValue(2.0, absoluteError: 0.0),
             UncertainValue(3.0, absoluteError: 0.0)
         ]

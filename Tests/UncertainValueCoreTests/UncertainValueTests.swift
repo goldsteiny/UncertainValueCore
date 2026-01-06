@@ -46,7 +46,7 @@ struct UncertainValueTests {
     }
 
     @Test func zeroValueWithZeroErrorHasZeroRelativeError() {
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let x = UncertainValue.zero
         #expect(x.relativeError == 0.0)
     }
 
@@ -338,7 +338,7 @@ struct UncertainValueTests {
 
     @Test func divisionByZeroThrows() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
-        let zero = UncertainValue(0.0, absoluteError: 0.0)
+        let zero = UncertainValue.zero
         do {
             _ = try x.dividing(by: zero, using: .l2)
             #expect(false)
@@ -401,7 +401,7 @@ struct UncertainValueTests {
     }
 
     @Test func integerPowerZeroBaseZeroErrorPositiveExponent() {
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+        let x = UncertainValue.zero
         let result = x.raised(to: 2)
 
         #expect(result != nil)
@@ -430,7 +430,7 @@ struct UncertainValueTests {
     }
 
     @Test func reciprocalOfZeroThrows() {
-        let zero = UncertainValue(0.0, absoluteError: 0.0)
+        let zero = UncertainValue.zero
         do {
             _ = try zero.reciprocal
             #expect(false)
