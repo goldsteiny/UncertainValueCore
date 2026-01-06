@@ -18,13 +18,13 @@ import UncertainValueCoreAlgebra
 /// `reciprocal` and `dividing` always succeed without throwing.
 ///
 /// Conforms to commutative multiplicative protocols for norm-aware multiplication.
-public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeGroupWithoutZero, Scalable, SignedRaisable, UncertainValueCoreAlgebra.SignMagnitudeProviding, RelativeErrorProviding {
+public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeGroupWithoutZero, Scalable, SignedRaisable, SignMagnitudeProviding, MultiplicativeErrorProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// Norm strategy type for protocol conformance.
     public typealias Norm = NormStrategy
     /// Sign of the original value.
-    public let sign: FloatingPointSign
+    public let signum: Signum
 
     /// Log of absolute value with propagated error.
     public let logAbs: UncertainValue
@@ -51,7 +51,8 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
             throw UncertainValueError.nonFinite
         }
 
-        self.sign = value.sign
+        
+        self.signum = value > 0 ? .positive : .negative
         self.logAbs = UncertainValue(
             Darwin.log(abs(value)),
             absoluteError: Darwin.log(multiplicativeError)
@@ -64,21 +65,21 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     ///   - sign: Sign of the value (.plus or .minus).
     /// - Throws: `UncertainValueError.nonFinite` if logAbs.value or logAbs.absoluteError is non-finite.
     /// - Note: Extreme logAbs values may cause overflow (to Inf) or underflow (to 0) when converted back to linear space.
-    public init(logAbs: UncertainValue, sign: FloatingPointSign) throws {
+    public init(logAbs: UncertainValue, signum: Signum) throws {
         guard logAbs.value.isFinite, logAbs.absoluteError.isFinite else {
             throw UncertainValueError.nonFinite
         }
 
-        self.sign = sign
+        self.signum = signum
         self.logAbs = logAbs
     }
 
     // MARK: - Unchecked Factory
 
     /// Private memberwise initializer for unchecked creation.
-    private init(uncheckedLogAbs: UncertainValue, uncheckedSign: FloatingPointSign) {
+    private init(uncheckedLogAbs: UncertainValue, uncheckedSign: Signum) {
         self.logAbs = uncheckedLogAbs
-        self.sign = uncheckedSign
+        self.signum = uncheckedSign
     }
 
     /// Creates a multiplicative uncertain value without validation.
@@ -95,7 +96,7 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
                 Darwin.log(abs(value)),
                 absoluteError: Darwin.log(multiplicativeError)
             ),
-            uncheckedSign: value.sign
+            uncheckedSign: value > 0 ? .positive : .negative
         )
     }
 
@@ -107,14 +108,14 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     ///   - sign: Sign of the value (.plus or .minus).
     /// - Precondition: logAbs.value.isFinite, logAbs.absoluteError.isFinite
     /// - Returns: A new MultiplicativeUncertainValue.
-    public static func unchecked(logAbs: UncertainValue, sign: FloatingPointSign) -> MultiplicativeUncertainValue {
-        MultiplicativeUncertainValue(uncheckedLogAbs: logAbs, uncheckedSign: sign)
+    public static func unchecked(logAbs: UncertainValue, signum: Signum) -> MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue(uncheckedLogAbs: logAbs, uncheckedSign: signum)
     }
 
     /// The central value with sign applied.
     public var value: Double {
         let absValue = Darwin.exp(logAbs.value)
-        return sign == .minus ? -absValue : absValue
+        return isPositive ? absValue :  -absValue
     }
 
     /// The multiplicative error factor.
@@ -122,18 +123,9 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
         Darwin.exp(logAbs.absoluteError)
     }
 
-    /// Relative error as a fraction: multiplicativeError - 1.
-    public var relativeError: Double {
-        multiplicativeError - 1
-    }
-
-    /// Sign of the value (never zero).
-    public var signum: Signum {
-        sign == .minus ? .negative : .positive
-    }
     
     public var flippedSign: MultiplicativeUncertainValue {
-        .unchecked(logAbs: logAbs, sign: sign == .minus ? .plus : .minus)
+        .unchecked(logAbs: logAbs, signum: isPositive ? .negative : .positive)
     }
 }
 

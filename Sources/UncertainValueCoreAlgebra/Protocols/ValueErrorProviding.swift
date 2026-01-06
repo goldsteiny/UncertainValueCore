@@ -37,7 +37,7 @@ public extension RelativeErrorProviding {
     }
 
     /// Multiplicative error factor (1 + relative error).
-    var errorMultiplier: Scalar {
+    var multiplicativeErrorEstimate: Scalar {
         1 + relativeError
     }
     
@@ -65,5 +65,20 @@ public extension AbsoluteErrorProviding {
         let denom = absoluteValue
         guard denom > 0 else { return absoluteError == 0 ? 0 : .infinity }
         return absoluteError / denom
+    }
+}
+
+
+public protocol MultiplicativeErrorProviding: ValueProviding {
+    var multiplicativeError: Scalar { get }
+}
+
+public extension MultiplicativeErrorProviding {
+    var multiplicativeErrorEstimate: Scalar {
+        multiplicativeError
+    }
+    
+    var relativeError: Scalar {
+        return multiplicativeError - 1.0
     }
 }

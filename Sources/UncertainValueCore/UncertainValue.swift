@@ -126,10 +126,18 @@ extension UncertainValue {
 extension UncertainValue {
     /// Zero with no uncertainty.
     public static let zero = UncertainValue(0, absoluteError: 0)
+    
+    public var isZero: Bool {
+        return value == 0.0 && absoluteError == 0.0
+    }
 
     /// One with no uncertainty.
     public static let one = UncertainValue(1, absoluteError: 0)
 
+    public var isOne: Bool {
+        return value == 1.0 && absoluteError == 0.0
+    }
+    
     /// Sums an array of values with error propagation using the specified norm.
     ///
     /// This is the primitive operation for the `CommutativeAdditiveGroup` protocol.
