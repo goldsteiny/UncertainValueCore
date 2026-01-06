@@ -25,7 +25,7 @@ extension MultiplicativeUncertainValue {
         guard !values.isEmpty else { return .one }
         let sumLogAbs = UncertainValue.sum(values.map(\.logAbs), using: strategy)
         let productSign = values.map(\.sign).product()
-        return MultiplicativeUncertainValue.exp(sumLogAbs, withResultSign: productSign)
+        return .uncheckedExp(sumLogAbs, withResultSign: productSign)
     }
 }
 

@@ -6,6 +6,7 @@
 //
 
 import Testing
+import UncertainValueCoreAlgebra
 @testable import UncertainValueCore
 
 struct UncertainValueMathTests {
@@ -13,7 +14,7 @@ struct UncertainValueMathTests {
 
     @Test func logPositiveValue() {
         let x = UncertainValue(10.0, absoluteError: 0.5)  // 5% relative error
-        let result = UncertainValueMath.log(x)
+        let result = try? UncertainValueMath.log(x)
 
         #expect(result != nil)
         #expect(abs(result!.value - 2.3026) < 0.001)  // ln(10)
@@ -21,14 +22,18 @@ struct UncertainValueMathTests {
         #expect(abs(result!.absoluteError - 0.05) < 0.001)
     }
 
-    @Test func logNegativeReturnsNil() {
+    @Test func logNegativeThrowsNonPositiveInput() {
         let x = UncertainValue(-10.0, absoluteError: 0.5)
-        #expect(UncertainValueMath.log(x) == nil)
+        #expect(throws: UncertainValueError.nonPositiveInput) {
+            try UncertainValueMath.log(x)
+        }
     }
 
-    @Test func logZeroReturnsNil() {
+    @Test func logZeroThrowsNonPositiveInput() {
         let x = UncertainValue.zero
-        #expect(UncertainValueMath.log(x) == nil)
+        #expect(throws: UncertainValueError.nonPositiveInput) {
+            try UncertainValueMath.log(x)
+        }
     }
 
     @Test func logArray() {
@@ -36,7 +41,7 @@ struct UncertainValueMathTests {
             UncertainValue(10.0, absoluteError: 0.5),
             UncertainValue(100.0, absoluteError: 5.0)
         ]
-        let result = UncertainValueMath.log(values)
+        let result = try? UncertainValueMath.log(values)
 
         #expect(result != nil)
         #expect(result!.count == 2)
@@ -44,12 +49,14 @@ struct UncertainValueMathTests {
         #expect(abs(result![1].value - 4.6052) < 0.001)  // ln(100)
     }
 
-    @Test func logArrayWithNegativeReturnsNil() {
+    @Test func logArrayWithNegativeThrowsNonPositiveInput() {
         let values = [
             UncertainValue(10.0, absoluteError: 0.5),
             UncertainValue(-5.0, absoluteError: 0.5)
         ]
-        #expect(UncertainValueMath.log(values) == nil)
+        #expect(throws: UncertainValueError.nonPositiveInput) {
+            try UncertainValueMath.log(values)
+        }
     }
 
     // MARK: - Exp Tests
@@ -114,16 +121,18 @@ struct UncertainValueMathTests {
 
     @Test func reciprocalValue() {
         let x = UncertainValue.withRelativeError(4.0, 0.05)
-        let result = UncertainValueMath.reciprocal(x)
+        let result = try? UncertainValueMath.reciprocal(x)
 
         #expect(result != nil)
         #expect(result!.value == 0.25)
         #expect(abs(result!.relativeError - 0.05) < 0.001)
     }
 
-    @Test func reciprocalZeroReturnsNil() {
+    @Test func reciprocalZeroThrowsDivisionByZero() {
         let x = UncertainValue.zero
-        #expect(UncertainValueMath.reciprocal(x) == nil)
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try x.reciprocal
+        }
     }
 
     // MARK: - Polynomial
@@ -131,7 +140,7 @@ struct UncertainValueMathTests {
     @Test func polynomialConstant() {
         let coeffs = [UncertainValue(5.0, absoluteError: 0.1)]
         let x = UncertainValue(3.0, absoluteError: 0.2)
-        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
+        let result = try? UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -145,16 +154,18 @@ struct UncertainValueMathTests {
             UncertainValue(3.0, absoluteError: 0.1)
         ]
         let x = UncertainValue(4.0, absoluteError: 0.2)
-        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
+        let result = try? UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(abs(result!.value - 14.0) < 0.0001)
     }
 
-    @Test func polynomialEmptyReturnsNil() {
+    @Test func polynomialEmptyThrowsEmptyInput() {
         let coeffs: [UncertainValue] = []
         let x = UncertainValue(3.0, absoluteError: 0.2)
-        #expect(UncertainValueMath.polynomial(coeffs, x, using: .l2) == nil)
+        #expect(throws: UncertainValueError.emptyCollection) {
+            try UncertainValueMath.polynomial(coeffs, x, using: .l2)
+        }
     }
 
     @Test func polynomialWithNegativeX() {
@@ -165,7 +176,7 @@ struct UncertainValueMathTests {
             UncertainValue(3.0, absoluteError: 0.0)
         ]
         let x = UncertainValue(-2.0, absoluteError: 0.0)
-        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
+        let result = try? UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(abs(result!.value - 9.0) < 0.0001)
@@ -179,7 +190,7 @@ struct UncertainValueMathTests {
             UncertainValue(3.0, absoluteError: 0.1)
         ]
         let x = UncertainValue.zero
-        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
+        let result = try? UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -191,7 +202,7 @@ struct UncertainValueMathTests {
     @Test func normalizeValue() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         let denom = UncertainValue(2.0, absoluteError: 0.1)
-        let result = UncertainValueMath.normalize([x], by: denom, using: .l2)
+        let result = try? UncertainValueMath.normalize([x], by: denom, using: .l2)
 
         #expect(result != nil)
         #expect(result!.count == 1)
@@ -204,7 +215,7 @@ struct UncertainValueMathTests {
             UncertainValue(20.0, absoluteError: 1.0),
             UncertainValue(30.0, absoluteError: 1.5)
         ]
-        let result = UncertainValueMath.normalizeByFirst(values, using: .l2)
+        let result = try? UncertainValueMath.normalizeByFirst(values, using: .l2)
 
         #expect(result != nil)
         #expect(result!.count == 3)
@@ -214,9 +225,18 @@ struct UncertainValueMathTests {
         #expect(result![2].value == 3.0)
     }
 
-    @Test func normalizeByFirstEmptyReturnsNil() {
+    @Test func normalizeByFirstEmptyReturnsEmpty() {
         let values: [UncertainValue] = []
-        #expect(UncertainValueMath.normalizeByFirst(values, using: .l2) == nil)
+        let result = try? UncertainValueMath.normalizeByFirst(values, using: .l2)
+        #expect(result != nil)
+        #expect(result!.isEmpty)
+    }
+    
+    @Test func normalizeByFirstLeadingZeroThrowsDivisionByZero() {
+        let values: [UncertainValue] = [.zero, .one, try! .one.scaledUp(by: 4.2)]
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try UncertainValueMath.normalizeByFirst(values, using: .l2)
+        }
     }
 
     // MARK: - Average Step Width
@@ -229,15 +249,16 @@ struct UncertainValueMathTests {
             UncertainValue(6.0, absoluteError: 0.1),
             UncertainValue(8.0, absoluteError: 0.1)
         ]
-        let result = UncertainValueMath.averageStepWidth(values, using: .l2)
+        let result = try? UncertainValueMath.averageStepWidth(values, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 2.0)  // (8 - 0) / 4
     }
 
-    @Test func averageStepWidthSingleValueReturnsNil() {
+    @Test func averageStepWidthSingleValueThrowsInsufficientElements() {
         let values = [UncertainValue(5.0, absoluteError: 0.1)]
-        #expect(UncertainValueMath.averageStepWidth(values, using: .l2) == nil)
+        #expect(throws: UncertainValueError.insufficientElements(required: 2, actual: 1)) { try UncertainValueMath.averageStepWidth(values, using: .l2)
+        }
     }
 
     // MARK: - Sigmoid (requires norm)
@@ -270,31 +291,37 @@ struct UncertainValueMathTests {
         let x = UncertainValue(0.6, absoluteError: 0.01)  // v = 0.6c
         let y = UncertainValue(1.0, absoluteError: 0.01)  // c = 1
 
-        let result = UncertainValueMath.lorentzFactor(x, y, using: .l2)
+        let result = try? UncertainValueMath.lorentzFactor(x, y, using: .l2)
 
         #expect(result != nil)
         // gamma = 1/sqrt(1 - 0.36) = 1/sqrt(0.64) = 1/0.8 = 1.25
         #expect(abs(result!.value - 1.25) < 0.001)
     }
 
-    @Test func lorentzFactorAtLimitReturnsNil() {
+    @Test func lorentzFactorAtLimitThrowsInvalidValue() {
         let x = UncertainValue(1.0, absoluteError: 0.01)  // v = c
         let y = UncertainValue(1.0, absoluteError: 0.01)
 
-        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(throws: UncertainValueError.invalidValue) {
+            try UncertainValueMath.lorentzFactor(x, y, using: .l2)
+        }
     }
 
-    @Test func lorentzFactorSuperluminalReturnsNil() {
+    @Test func lorentzFactorSuperluminalThrowsInvalidValue() {
         let x = UncertainValue(1.5, absoluteError: 0.01)  // v > c
         let y = UncertainValue(1.0, absoluteError: 0.01)
 
-        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(throws: UncertainValueError.invalidValue) {
+            try UncertainValueMath.lorentzFactor(x, y, using: .l2)
+        }
     }
 
-    @Test func lorentzFactorZeroDenominatorReturnsNil() {
+    @Test func lorentzFactorZeroDenominatorThrowsDivisionByZero() {
         let x = UncertainValue(0.6, absoluteError: 0.01)
         let y = UncertainValue(0.0, absoluteError: 0.01)
 
-        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try UncertainValueMath.lorentzFactor(x, y, using: .l2)
+        }
     }
 }

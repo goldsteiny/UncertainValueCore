@@ -9,32 +9,46 @@
 import Foundation
 import UncertainValueCore
 import MultiplicativeUncertainValue
+import UncertainValueCoreAlgebra
 
 extension Array where Element == Double {
     /// Computes the geometric mean with log-space sample standard deviation as uncertainty.
     /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(values).
-    /// - Precondition: Array must contain at least 2 elements, all positive.
-    public func geometricMeanL2() -> MultiplicativeUncertainValue {
-        precondition(count >= 2, "Geometric mean requires at least 2 values for standard deviation")
-        precondition(allSatisfy { $0 > 0 }, "Geometric mean requires all values to be positive")
+    /// - Throws:
+    ///   - `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    ///   - `UncertainValueError.negativeInput` if any value is non-positive.
+    public func geometricMeanL2() throws -> MultiplicativeUncertainValue {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
+        guard allSatisfy({ $0 > 0 }) else {
+            throw UncertainValueError.negativeInput
+        }
 
         let logValues = map { Darwin.log($0) }
-        let logMean = logValues.arithmeticMeanL2()
+        let logMean = try logValues.arithmeticMeanL2()
 
-        return MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
+        return try MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
     }
 
     /// Computes the geometric mean with log-space sample standard deviation as uncertainty.
     /// Uses Apple's Accelerate framework (vDSP) for optimized computation.
+    /// Recommended for arrays with >1000 elements.
     /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(values).
-    /// - Precondition: Array must contain at least 2 elements, all positive.
-    public func geometricMeanL2_vDSP() -> MultiplicativeUncertainValue {
-        precondition(count >= 2, "Geometric mean requires at least 2 values for standard deviation")
-        precondition(allSatisfy { $0 > 0 }, "Geometric mean requires all values to be positive")
+    /// - Throws:
+    ///   - `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    ///   - `UncertainValueError.negativeInput` if any value is non-positive.
+    public func geometricMeanL2_vDSP() throws -> MultiplicativeUncertainValue {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
+        guard allSatisfy({ $0 > 0 }) else {
+            throw UncertainValueError.negativeInput
+        }
 
         let logValues = map { Darwin.log($0) }
-        let logMean = logValues.arithmeticMeanL2_vDSP()
+        let logMean = try logValues.arithmeticMeanL2_vDSP()
 
-        return MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
+        return try MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
     }
 }

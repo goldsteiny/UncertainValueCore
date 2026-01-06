@@ -8,6 +8,7 @@
 import Testing
 @testable import UncertainValueCore
 @testable import UncertainValueConvenience
+import UncertainValueCoreAlgebra
 
 struct OperatorTests {
     // MARK: - Binary Operators
@@ -41,20 +42,21 @@ struct OperatorTests {
         #expect(abs(result.relativeError - 0.0640) < 0.001)
     }
 
-    @Test func division() {
+    @Test func division() throws {
         let x = UncertainValue.withRelativeError(10.0, 0.05)
         let y = UncertainValue.withRelativeError(5.0, 0.04)
-        let result = x / y
+        let result = try x / y
 
-        #expect(result != nil)
-        #expect(result!.value == 2.0)
-        #expect(abs(result!.relativeError - 0.0640) < 0.001)
+        #expect(result.value == 2.0)
+        #expect(abs(result.relativeError - 0.0640) < 0.001)
     }
 
-    @Test func divisionByZeroReturnsNil() {
+    @Test func divisionByZeroThrows() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         let zero = UncertainValue.zero
-        #expect(x / zero == nil)
+        #expect(throws: UncertainValueError.self) {
+            try x / zero
+        }
     }
 
     // MARK: - Mixed Operators (Double, UncertainValue)
@@ -107,21 +109,21 @@ struct OperatorTests {
         #expect(prod2.absoluteError == 1.0)
     }
 
-    @Test func divideByConstant() {
+    @Test func divideByConstant() throws {
         let x = UncertainValue(10.0, absoluteError: 0.5)
 
-        let div1 = 20.0 / x
-        #expect(div1 != nil)
-        #expect(div1!.value == 2.0)
+        let div1 = try 20.0 / x
+        #expect(div1.value == 2.0)
 
-        let div2 = x / 2.0
-        #expect(div2 != nil)
-        #expect(div2!.value == 5.0)
+        let div2 = try x / 2.0
+        #expect(div2.value == 5.0)
     }
 
-    @Test func divideByConstantZeroReturnsNil() {
+    @Test func divideByConstantZeroThrows() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
-        #expect(x / 0.0 == nil)
+        #expect(throws: UncertainValueError.self) {
+            try x / 0.0
+        }
     }
 
     // MARK: - Verify Operators Use L2

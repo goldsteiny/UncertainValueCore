@@ -20,9 +20,9 @@ final class UncertainValueStatisticsTests: XCTestCase {
         accuracy: Double,
         file: StaticString = #file,
         line: UInt = #line
-    ) {
-        let custom = values.arithmeticMeanL2()
-        let vdsp = values.arithmeticMeanL2_vDSP()
+    ) throws {
+        let custom = try values.arithmeticMeanL2()
+        let vdsp = try values.arithmeticMeanL2_vDSP()
 
         // Test custom implementation
         XCTAssertEqual(custom.value, expectedValue, accuracy: accuracy,
@@ -50,9 +50,9 @@ final class UncertainValueStatisticsTests: XCTestCase {
         accuracy: Double,
         file: StaticString = #file,
         line: UInt = #line
-    ) {
-        let custom = values.geometricMeanL2()
-        let vdsp = values.geometricMeanL2_vDSP()
+    ) throws {
+        let custom = try values.geometricMeanL2()
+        let vdsp = try values.geometricMeanL2_vDSP()
 
         // Test custom implementation
         XCTAssertEqual(custom.value, expectedValue, accuracy: accuracy,
@@ -71,35 +71,35 @@ final class UncertainValueStatisticsTests: XCTestCase {
 
     // MARK: - Arithmetic Mean Tests
 
-    func testArithmeticMean_simpleSequence() {
+    func testArithmeticMean_simpleSequence() throws {
         let values = [1.0, 2.0, 3.0, 4.0, 5.0]
         // Sample std dev = sqrt(10/4) = sqrt(2.5)
-        assertArithmeticMean(values, expectedValue: 3.0, expectedStdDev: sqrt(2.5), accuracy: 1e-10)
+        try assertArithmeticMean(values, expectedValue: 3.0, expectedStdDev: sqrt(2.5), accuracy: 1e-10)
     }
 
-    func testArithmeticMean_identicalValues() {
+    func testArithmeticMean_identicalValues() throws {
         let values = [10.0, 10.0, 10.0]
-        assertArithmeticMean(values, expectedValue: 10.0, expectedStdDev: 0.0, accuracy: 1e-10)
+        try assertArithmeticMean(values, expectedValue: 10.0, expectedStdDev: 0.0, accuracy: 1e-10)
     }
 
-    func testArithmeticMean_twoValues() {
+    func testArithmeticMean_twoValues() throws {
         let values = [0.0, 10.0]
         // Sample std dev = sqrt(50/1) = sqrt(50)
-        assertArithmeticMean(values, expectedValue: 5.0, expectedStdDev: sqrt(50), accuracy: 1e-10)
+        try assertArithmeticMean(values, expectedValue: 5.0, expectedStdDev: sqrt(50), accuracy: 1e-10)
     }
 
-    func testArithmeticMean_negativeValues() {
+    func testArithmeticMean_negativeValues() throws {
         let values = [-5.0, -3.0, -1.0, 1.0, 3.0, 5.0]
         // Sum of squared deviations from 0: 25+9+1+1+9+25 = 70, sample std dev = sqrt(70/5) = sqrt(14)
-        assertArithmeticMean(values, expectedValue: 0.0, expectedStdDev: sqrt(14), accuracy: 1e-10)
+        try assertArithmeticMean(values, expectedValue: 0.0, expectedStdDev: sqrt(14), accuracy: 1e-10)
     }
 
-    func testArithmeticMean_extremeValues() {
+    func testArithmeticMean_extremeValues() throws {
         let scale = 1e100
         let values = [1.0 * scale, 2.0 * scale, 3.0 * scale, 4.0 * scale, 5.0 * scale]
 
-        let custom = values.arithmeticMeanL2()
-        let vdsp = values.arithmeticMeanL2_vDSP()
+        let custom = try values.arithmeticMeanL2()
+        let vdsp = try values.arithmeticMeanL2_vDSP()
 
         // Both should produce finite results
         XCTAssertTrue(custom.value.isFinite, "Custom should handle extreme values")
@@ -112,12 +112,12 @@ final class UncertainValueStatisticsTests: XCTestCase {
         XCTAssertEqual(custom.absoluteError, sqrt(2.5) * scale, accuracy: 1e90)
     }
 
-    func testArithmeticMean_tinyValues() {
+    func testArithmeticMean_tinyValues() throws {
         let scale = 1e-100
         let values = [1.0 * scale, 2.0 * scale, 3.0 * scale, 4.0 * scale, 5.0 * scale]
 
-        let custom = values.arithmeticMeanL2()
-        let vdsp = values.arithmeticMeanL2_vDSP()
+        let custom = try values.arithmeticMeanL2()
+        let vdsp = try values.arithmeticMeanL2_vDSP()
 
         // Both should produce finite results
         XCTAssertTrue(custom.value.isFinite, "Custom should handle tiny values")
@@ -130,11 +130,11 @@ final class UncertainValueStatisticsTests: XCTestCase {
         XCTAssertEqual(custom.absoluteError, sqrt(2.5) * scale, accuracy: 1e-110)
     }
 
-    func testArithmeticMean_allZeros() {
+    func testArithmeticMean_allZeros() throws {
         let values = [0.0, 0.0, 0.0]
 
-        let custom = values.arithmeticMeanL2()
-        let vdsp = values.arithmeticMeanL2_vDSP()
+        let custom = try values.arithmeticMeanL2()
+        let vdsp = try values.arithmeticMeanL2_vDSP()
 
         XCTAssertEqual(custom.value, 0.0)
         XCTAssertEqual(custom.absoluteError, 0.0)
@@ -145,18 +145,18 @@ final class UncertainValueStatisticsTests: XCTestCase {
 
     // MARK: - Geometric Mean Tests
 
-    func testGeometricMean_powersOfTwo() {
+    func testGeometricMean_powersOfTwo() throws {
         let values = [1.0, 2.0, 4.0]
         // Geometric mean of [1, 2, 4] = 2
-        assertGeometricMean(values, expectedValue: 2.0, accuracy: 1e-10)
+        try assertGeometricMean(values, expectedValue: 2.0, accuracy: 1e-10)
     }
 
-    func testGeometricMean_identicalValues() {
+    func testGeometricMean_identicalValues() throws {
         let e = Darwin.M_E
         let values = [e, e, e]
 
-        let custom = values.geometricMeanL2()
-        let vdsp = values.geometricMeanL2_vDSP()
+        let custom = try values.geometricMeanL2()
+        let vdsp = try values.geometricMeanL2_vDSP()
 
         XCTAssertEqual(custom.value, e, accuracy: 1e-10)
         XCTAssertEqual(custom.relativeError, 0.0, accuracy: 1e-10)
@@ -164,31 +164,31 @@ final class UncertainValueStatisticsTests: XCTestCase {
         XCTAssertEqual(vdsp.relativeError, 0.0, accuracy: 1e-10)
     }
 
-    func testGeometricMean_twoValues() {
+    func testGeometricMean_twoValues() throws {
         let values = [4.0, 9.0]
         // Geometric mean = sqrt(4 * 9) = 6
-        assertGeometricMean(values, expectedValue: 6.0, accuracy: 1e-10)
+        try assertGeometricMean(values, expectedValue: 6.0, accuracy: 1e-10)
     }
 
-    func testGeometricMean_alwaysPositive() {
+    func testGeometricMean_alwaysPositive() throws {
         let values = [0.1, 0.5, 2.0, 10.0]
 
-        let custom = values.geometricMeanL2()
-        let vdsp = values.geometricMeanL2_vDSP()
+        let custom = try values.geometricMeanL2()
+        let vdsp = try values.geometricMeanL2_vDSP()
 
         XCTAssertTrue(custom.isPositive)
         XCTAssertTrue(vdsp.isPositive)
     }
 
-    func testGeometricMean_logAbsMatchesArithmeticMeanOfLogs() {
+    func testGeometricMean_logAbsMatchesArithmeticMeanOfLogs() throws {
         let values = [2.0, 8.0, 32.0]
         let logValues = values.map { Darwin.log($0) }
 
-        let expectedLogMean = logValues.arithmeticMeanL2()
-        let expectedLogMeanVDSP = logValues.arithmeticMeanL2_vDSP()
+        let expectedLogMean = try logValues.arithmeticMeanL2()
+        let expectedLogMeanVDSP = try logValues.arithmeticMeanL2_vDSP()
 
-        let custom = values.geometricMeanL2()
-        let vdsp = values.geometricMeanL2_vDSP()
+        let custom = try values.geometricMeanL2()
+        let vdsp = try values.geometricMeanL2_vDSP()
 
         // Custom uses custom arithmeticMean internally
         XCTAssertEqual(custom.logAbs.value, expectedLogMean.value, accuracy: 1e-10)

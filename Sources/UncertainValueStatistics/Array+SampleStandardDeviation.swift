@@ -14,15 +14,17 @@ extension Array where Element == Double {
     /// Computes the sample standard deviation.
     /// Formula: sqrt(sum((x - mean)^2) / (n-1)) = norm2(deviations) / sqrt(n-1)
     /// - Returns: Sample standard deviation.
-    /// - Precondition: Array must contain at least 2 elements.
-    public func sampleStandardDeviationL2() -> Double {
-        precondition(count >= 2, "Sample standard deviation requires at least 2 values")
+    /// - Throws: `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    public func sampleStandardDeviationL2() throws -> Double {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
 
         let n = Double(count)
-        let mean = valuesMean
+        let mean = try valuesMean()
         let deviations = map { $0 - mean }
 
-        return deviations.normalizedScalableReduce { UncertainValueCoreAlgebra.norm2($0) } / Darwin.sqrt(n - 1)
+        return try deviations.normalizedScalableReduce { UncertainValueCoreAlgebra.norm2($0) } / Darwin.sqrt(n - 1)
     }
 }
 
@@ -31,16 +33,18 @@ extension Array where Element == UncertainValue {
     /// Value: norm2(deviations) / sqrt(n-1)
     /// Error: propagated from individual measurement errors using L2 norm.
     /// - Returns: Sample standard deviation with uncertainty.
-    /// - Precondition: Array must contain at least 2 elements.
-    public func sampleStandardDeviationL2() -> UncertainValue {
-        precondition(count >= 2, "Sample standard deviation requires at least 2 values")
+    /// - Throws: `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    public func sampleStandardDeviationL2() throws -> UncertainValue {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
 
         let n = Double(count)
         let vals = values
 
-        let resultValue = vals.sampleStandardDeviationL2()
+        let resultValue = try vals.sampleStandardDeviationL2()
 
-        let mean = vals.valuesMean
+        let mean = try vals.valuesMean()
         let scaledDeviations = vals.map { ($0 - mean) / Darwin.sqrt(n - 1) }
         let scaledErrors: [Double] = zip(scaledDeviations, absoluteErrors).map(*)
         let resultError = UncertainValueCoreAlgebra.norm2(scaledErrors)

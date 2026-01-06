@@ -8,6 +8,7 @@
 
 import Foundation
 import Testing
+import UncertainValueCoreAlgebra
 @testable import UncertainValueCore
 
 struct UncertainValueTests {
@@ -177,7 +178,7 @@ struct UncertainValueTests {
             UncertainValue(10.0, absoluteError: 0.3),
             UncertainValue(20.0, absoluteError: 0.4)
         ]
-        let result = values.mean(using: .l2)
+        let result = try? values.mean(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 15.0)
@@ -190,7 +191,7 @@ struct UncertainValueTests {
             UncertainValue(-10.0, absoluteError: 0.3),
             UncertainValue(20.0, absoluteError: 0.4)
         ]
-        let result = values.mean(using: .l2)
+        let result = try? values.mean(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -202,7 +203,7 @@ struct UncertainValueTests {
             UncertainValue(1.0e-6, absoluteError: 0.1),
             UncertainValue(1.0e6, absoluteError: 0.2)
         ]
-        let result = values.mean(using: .l2)
+        let result = try? values.mean(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 500000.0000005)
@@ -213,7 +214,7 @@ struct UncertainValueTests {
             UncertainValue(10.0, absoluteError: 0.3),
             UncertainValue(20.0, absoluteError: 0.4)
         ]
-        let result = values.mean(using: .l1)
+        let result = try? values.mean(using: .l1)
 
         #expect(result != nil)
         #expect(result!.value == 15.0)
@@ -223,16 +224,18 @@ struct UncertainValueTests {
 
     @Test func arrayMeanSingleValue() {
         let values = [UncertainValue(5.0, absoluteError: 0.2)]
-        let result = values.mean(using: .l2)
+        let result = try? values.mean(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
         #expect(result!.absoluteError == 0.2)
     }
     
-    @Test func arrayMeanEmptyReturnsNil() {
+    @Test func arrayMeanEmptyThrowsEmptyCollection() {
         let values: [UncertainValue] = []
-        #expect(values.mean(using: .l2) == nil)
+        #expect(throws: UncertainValueError.emptyCollection) {
+            try values.mean(using: .l2)
+        }
     }
     
     // MARK: - Double Array Helper Tests
@@ -336,22 +339,17 @@ struct UncertainValueTests {
         #expect(abs(result.relativeError - 0.0640) < 0.001)
     }
 
-    @Test func divisionByZeroThrows() {
+    @Test func divisionByZeroThrowsDivisionByZero() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         let zero = UncertainValue.zero
-        do {
-            _ = try x.dividing(by: zero, using: .l2)
-            #expect(false)
-        } catch let error as UncertainValueError {
-            #expect(error == .divisionByZero)
-        } catch {
-            #expect(false)
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try x.dividing(by: zero, using: .l2)
         }
     }
 
     @Test func power() {
         let x = UncertainValue.withRelativeError(10.0, 0.05)
-        let result = x.raised(to: 2.0)
+        let result = try? x.raised(to: 2.0)
 
         #expect(result != nil)
         #expect(result!.value == 100.0)
@@ -359,30 +357,34 @@ struct UncertainValueTests {
         #expect(abs(result!.relativeError - 0.10) < 0.001)
     }
 
-    @Test func powerOfNegativeReturnsNil() {
+    @Test func powerOfNegativeThrowsNegativeInput() {
         let x = UncertainValue(-10.0, absoluteError: 0.5)
-        #expect(x.raised(to: 2.0) == nil)
+        #expect(throws: UncertainValueError.negativeInput) {
+            try x.raised(to: 2.0)
+        }
     }
 
     @Test func powerOfZeroNoErrorReturnsZero() {
         let x = UncertainValue.zero
-        let result = x.raised(to: 2.0)
+        let result = try? x.raised(to: 2.0)
 
-        #expect(x != nil)
+        #expect(result != nil)
         #expect(result!.value == 0.0)
         #expect(result!.absoluteError == 0.0)
     }
 
-    @Test func powerOfZeroWithErrorReturnsNil() {
+    @Test func powerOfZeroWithErrorThrowsInvalidValue() {
         let x = UncertainValue(0.0, absoluteError: 1.0)
-        #expect(x.raised(to: 2.0) == nil)
+        #expect(throws: UncertainValueError.invalidValue) {
+            try x.raised(to: 2.0)
+        }
     }
 
     // MARK: - Integer Power Tests
 
     @Test func integerPowerNegativeBaseEvenExponent() {
         let x = UncertainValue(-2.0, absoluteError: 0.1)  // 5% relative
-        let result = x.raised(to: 2)
+        let result = try? x.raised(to: 2)
 
         #expect(result != nil)
         #expect(result!.value == 4.0)
@@ -392,7 +394,7 @@ struct UncertainValueTests {
 
     @Test func integerPowerNegativeBaseOddExponent() {
         let x = UncertainValue(-2.0, absoluteError: 0.1)  // 5% relative
-        let result = x.raised(to: 3)
+        let result = try? x.raised(to: 3)
 
         #expect(result != nil)
         #expect(result!.value == -8.0)
@@ -402,16 +404,18 @@ struct UncertainValueTests {
 
     @Test func integerPowerZeroBaseZeroErrorPositiveExponent() {
         let x = UncertainValue.zero
-        let result = x.raised(to: 2)
+        let result = try? x.raised(to: 2)
 
         #expect(result != nil)
         #expect(result!.value == 0.0)
         #expect(result!.absoluteError == 0.0)
     }
 
-    @Test func integerPowerZeroBaseNonZeroErrorReturnsNil() {
+    @Test func integerPowerZeroBaseNonZeroErrorThrowsInvalidValue() {
         let x = UncertainValue(0.0, absoluteError: 0.1)
-        #expect(x.raised(to: 2) == nil)
+        #expect(throws: UncertainValueError.invalidValue) {
+            try x.raised(to: 2)
+        }
     }
 
     @Test func negative() {
@@ -431,19 +435,14 @@ struct UncertainValueTests {
 
     @Test func reciprocalOfZeroThrows() {
         let zero = UncertainValue.zero
-        do {
-            _ = try zero.reciprocal
-            #expect(false)
-        } catch let error as UncertainValueError {
-            #expect(error == .divisionByZero)
-        } catch {
-            #expect(false)
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try zero.reciprocal
         }
     }
 
     @Test func exponentiationOperator() {
         let x = UncertainValue.withRelativeError(10.0, 0.05)
-        let result = x ** 2.0
+        let result = try? x ** 2.0
 
         #expect(result != nil)
         #expect(result!.value == 100.0)
@@ -479,15 +478,17 @@ struct UncertainValueTests {
     @Test func divideByConstant() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
 
-        let div = x.dividing(by: 2.0)
+        let div = try? x.dividing(by: 2.0)
         #expect(div != nil)
         #expect(div!.value == 5.0)
         #expect(div!.absoluteError == 0.25)
     }
 
-    @Test func divideByConstantZeroReturnsNil() {
+    @Test func divideByConstantZeroThrowsDivisionByZero() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
-        #expect(x.dividing(by: 0.0) == nil)
+        #expect(throws: UncertainValueError.divisionByZero) {
+            try x.dividing(by: 0.0)
+        }
     }
 
     @Test func multiplyByNegativeConstant() {
@@ -501,7 +502,7 @@ struct UncertainValueTests {
     @Test func divideByNegativeConstant() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
 
-        let div = x.dividing(by: -2.0)
+        let div = try? x.dividing(by: -2.0)
         #expect(div != nil)
         #expect(div!.value == -5.0)
         #expect(div!.relativeError == 0.05)  // relative error preserved
@@ -634,7 +635,7 @@ struct UncertainValueTests {
             UncertainValue(3.0, absoluteError: 0.1),
             UncertainValue(4.0, absoluteError: 0.1)
         ]
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -650,15 +651,16 @@ struct UncertainValueTests {
             UncertainValue(3.0, absoluteError: 0.1),
             UncertainValue(4.0, absoluteError: 0.1)
         ]
-        let result = values.norm2(using: .l2)!
+        let result = try? values.norm2(using: .l2)
 
-        #expect(result.value == 5.0)
-        #expect(abs(result.absoluteError - 0.1) < 0.0001)
+        #expect(result != nil)
+        #expect(result!.value == 5.0)
+        #expect(abs(result!.absoluteError - 0.1) < 0.0001)
     }
 
     @Test func norm2SingleElement() {
         let values = [UncertainValue(5.0, absoluteError: 0.2)]
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -669,7 +671,7 @@ struct UncertainValueTests {
 
     @Test func norm2EmptyArray() {
         let values: [UncertainValue] = []
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 0.0)
@@ -682,7 +684,7 @@ struct UncertainValueTests {
             UncertainValue(-3.0, absoluteError: 0.1),
             UncertainValue(4.0, absoluteError: 0.1)
         ]
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -694,7 +696,7 @@ struct UncertainValueTests {
             UncertainValue(-3.0, absoluteError: 0.1),
             UncertainValue(-4.0, absoluteError: 0.1)
         ]
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -706,7 +708,7 @@ struct UncertainValueTests {
             UncertainValue(1.0e-6, absoluteError: 0.1),
             UncertainValue(1.0e6, absoluteError: 0.1)
         ]
-        let result = values.norm2(using: .l2)
+        let result = try? values.norm2(using: .l2)
 
         #expect(result != nil)
         #expect(abs(result!.value - 1.0e6) < 1.0)

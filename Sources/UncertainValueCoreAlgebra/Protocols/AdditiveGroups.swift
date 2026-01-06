@@ -25,10 +25,8 @@ public extension AdditiveGroup {
 public extension AdditiveGroup where Self: Scalable {
     /// Default negation using scalar scaling.
     var negative: Self {
-        guard let value = scaledUp(by: -1) else {
-            preconditionFailure("Scaling by -1 must succeed for additive groups.")
-        }
-        return value
+        // Safe: -1 is always a valid scale factor (non-zero, finite)
+        try! scaledUp(by: -1)
     }
 }
 

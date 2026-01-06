@@ -9,11 +9,18 @@
 import Accelerate
 import Foundation
 import UncertainValueCore
+import UncertainValueCoreAlgebra
 
 extension Array where Element == Double {
 
-    public func normalizedScalableReduce(_ f: ([Double]) -> Double) -> Double {
-        precondition(count >= 1, "Scaling requires at least 1 value")
+    /// Applies a reduction function with max-value normalization for numerical stability.
+    /// - Parameter f: Reduction function to apply to normalized values.
+    /// - Returns: Scaled result.
+    /// - Throws: `UncertainValueError.emptyCollection` if array is empty.
+    func normalizedScalableReduce(_ f: ([Double]) -> Double) throws -> Double {
+        guard !isEmpty else {
+            throw UncertainValueError.emptyCollection
+        }
 
         let maxAbsValue = map { abs($0) }.max() ?? 0
         guard maxAbsValue > 0 else {
@@ -24,28 +31,33 @@ extension Array where Element == Double {
         return maxAbsValue * f(normalized)
     }
 
-    public var valuesMean: Double {
-        precondition(count >= 1, "Arithmetic mean requires at least 1 value")
-
-        return normalizedScalableReduce { $0.reduce(0, +) / Double(count) }
+    /// Mean of values using normalized reduce for numerical stability.
+    /// - Throws: `UncertainValueError.emptyCollection` if array is empty.
+    func valuesMean() throws -> Double {
+        try normalizedScalableReduce { $0.reduce(0, +) / Double(count) }
     }
 
     /// Computes the arithmetic mean with sample standard deviation as uncertainty.
     /// Uses normalization by max value for numerical stability with extreme values.
     /// - Returns: UncertainValue where value is the mean and absoluteError is the sample standard deviation.
-    /// - Precondition: Array must contain at least 2 elements.
-    public func arithmeticMeanL2() -> UncertainValue {
-        precondition(count >= 2, "Arithmetic mean requires at least 2 values for standard deviation")
+    /// - Throws: `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    public func arithmeticMeanL2() throws -> UncertainValue {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
 
-        return UncertainValue(valuesMean, absoluteError: sampleStandardDeviationL2())
+        return UncertainValue(try valuesMean(), absoluteError: try sampleStandardDeviationL2())
     }
 
     /// Computes the arithmetic mean with sample standard deviation as uncertainty.
     /// Uses Apple's Accelerate framework (vDSP) for optimized computation.
+    /// Recommended for arrays with >1000 elements.
     /// - Returns: UncertainValue where value is the mean and absoluteError is the sample standard deviation.
-    /// - Precondition: Array must contain at least 2 elements.
-    public func arithmeticMeanL2_vDSP() -> UncertainValue {
-        precondition(count >= 2, "Arithmetic mean requires at least 2 values for standard deviation")
+    /// - Throws: `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    public func arithmeticMeanL2_vDSP() throws -> UncertainValue {
+        guard count >= 2 else {
+            throw UncertainValueError.insufficientElements(required: 2, actual: count)
+        }
 
         let mean = vDSP.mean(self)
 
@@ -65,9 +77,8 @@ extension Array where Element == Double {
 extension Array where Element == UncertainValue {
     /// Computes the arithmetic mean with error propagation using L2 norm.
     /// - Returns: Mean value with combined and scaled uncertainty.
-    /// - Precondition: Array must not be empty.
-    public func arithmeticMeanL2() -> UncertainValue {
-        precondition(!isEmpty, "Arithmetic mean requires at least 1 value")
-        return mean(using: .l2)!
+    /// - Throws: `UncertainValueError.emptyCollection` if array is empty.
+    public func arithmeticMeanL2() throws -> UncertainValue {
+        try mean(using: .l2)
     }
 }

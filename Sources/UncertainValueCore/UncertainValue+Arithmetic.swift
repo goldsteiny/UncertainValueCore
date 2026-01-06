@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UncertainValueCoreAlgebra
 
 // MARK: - Constant Operations (no norm needed - only one uncertainty source)
 
@@ -28,9 +29,10 @@ extension UncertainValue {
     }
 
     /// Divides by a constant (no norm needed - single error source).
-    /// - Returns: Result, or nil if constant is 0.
-    public func dividing(by constant: Double) -> UncertainValue? {
-        guard constant != 0 else { return nil }
+    /// - Returns: Result.
+    /// - Throws: `UncertainValueError.divisionByZero` if constant is 0.
+    public func dividing(by constant: Double) throws -> UncertainValue {
+        guard constant != 0 else { throw UncertainValueError.divisionByZero }
         return UncertainValue(value / constant, absoluteError: absoluteError / abs(constant))
     }
 }

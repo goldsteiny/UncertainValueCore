@@ -30,6 +30,7 @@ public func / <T: MultiplicativeGroupWithoutZero>(lhs: T, rhs: T) -> T where T.N
 }
 
 /// Division for types that may contain zero.
-public func / <T: MultiplicativeGroupWithZero>(lhs: T, rhs: T) -> T? where T.Norm == NormStrategy {
-    lhs.dividingOrNil(by: rhs, using: .l2)
+/// - Throws: `UncertainValueError.divisionByZero` if divisor is zero.
+public func / <T: MultiplicativeGroupWithZero>(lhs: T, rhs: T) throws -> T where T.Norm == NormStrategy {
+    try lhs.dividing(by: rhs, using: .l2)
 }

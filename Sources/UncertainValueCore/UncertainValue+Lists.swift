@@ -48,15 +48,15 @@ extension Array where Element == UncertainValue {
     /// Formula: sqrt(sum(x_i^2))
     /// Uses normalization by max absolute value for numerical stability.
     /// - Parameter strategy: The norm strategy for combining errors.
-    /// - Returns: L2 norm with propagated uncertainty, or nil if computation fails.
-    public func norm2(using strategy: NormStrategy) -> UncertainValue? {
+    /// - Returns: L2 norm with propagated uncertainty.
+    /// - Throws: `UncertainValueError` if computation fails.
+    public func norm2(using strategy: NormStrategy) throws -> UncertainValue {
         guard !isEmpty else { return .zero }
 
         guard let scale = values.absMax, scale > 0 else { return .zero }
 
-        let normalizedSquared = compactMap { ($0.dividing(by: scale))?.raised(to: 2) }
-        guard normalizedSquared.count == count else { return nil }
+        let normalizedSquared = try map { try ($0.dividing(by: scale)).raised(to: 2) }
 
-        return normalizedSquared.sum(using: strategy).raised(to: 0.5)?.multiplying(by: scale)
+        return try normalizedSquared.sum(using: strategy).raised(to: 0.5).multiplying(by: scale)
     }
 }

@@ -33,12 +33,23 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     /// - Parameters:
     ///   - value: The central value (must be non-zero and finite).
     ///   - multiplicativeError: The multiplicative error factor (must be >= 1 and finite).
-    /// - Precondition: value != 0, value.isFinite, multiplicativeError >= 1, and multiplicativeError.isFinite.
-    public init(value: Double, multiplicativeError: Double) {
-        precondition(value != 0, "MultiplicativeUncertainValue requires value != 0")
-        precondition(value.isFinite, "MultiplicativeUncertainValue requires finite value, got \(value)")
-        precondition(multiplicativeError >= 1, "MultiplicativeUncertainValue requires multiplicativeError >= 1, got \(multiplicativeError)")
-        precondition(multiplicativeError.isFinite, "MultiplicativeUncertainValue requires finite multiplicativeError, got \(multiplicativeError)")
+    /// - Throws:
+    ///   - `UncertainValueError.invalidValue` if value is zero.
+    ///   - `UncertainValueError.nonFinite` if value or multiplicativeError is non-finite.
+    ///   - `UncertainValueError.invalidMultiplicativeError` if multiplicativeError < 1.
+    public init(value: Double, multiplicativeError: Double) throws {
+        guard value != 0 else {
+            throw UncertainValueError.invalidValue
+        }
+        guard value.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
+        guard multiplicativeError >= 1 else {
+            throw UncertainValueError.invalidMultiplicativeError
+        }
+        guard multiplicativeError.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
 
         self.sign = value.sign
         self.logAbs = UncertainValue(
@@ -51,13 +62,53 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     /// - Parameters:
     ///   - logAbs: Log of absolute value with error in log-space.
     ///   - sign: Sign of the value (.plus or .minus).
-    /// - Precondition: logAbs.value and logAbs.absoluteError must be finite.
-    public init(logAbs: UncertainValue, sign: FloatingPointSign) {
-        precondition(logAbs.value.isFinite, "logAbs.value must be finite, got \(logAbs.value)")
-        precondition(logAbs.absoluteError.isFinite, "logAbs.absoluteError must be finite, got \(logAbs.absoluteError)")
+    /// - Throws: `UncertainValueError.nonFinite` if logAbs.value or logAbs.absoluteError is non-finite.
+    /// - Note: Extreme logAbs values may cause overflow (to Inf) or underflow (to 0) when converted back to linear space.
+    public init(logAbs: UncertainValue, sign: FloatingPointSign) throws {
+        guard logAbs.value.isFinite, logAbs.absoluteError.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
 
         self.sign = sign
         self.logAbs = logAbs
+    }
+
+    // MARK: - Unchecked Factory
+
+    /// Private memberwise initializer for unchecked creation.
+    private init(uncheckedLogAbs: UncertainValue, uncheckedSign: FloatingPointSign) {
+        self.logAbs = uncheckedLogAbs
+        self.sign = uncheckedSign
+    }
+
+    /// Creates a multiplicative uncertain value without validation.
+    ///
+    /// Use this when you have already validated the inputs or they come from a trusted source.
+    /// - Parameters:
+    ///   - value: The central value. Must be non-zero and finite.
+    ///   - multiplicativeError: The multiplicative error factor. Must be >= 1 and finite.
+    /// - Precondition: value != 0, value.isFinite, multiplicativeError >= 1, multiplicativeError.isFinite
+    /// - Returns: A new MultiplicativeUncertainValue.
+    public static func unchecked(value: Double, multiplicativeError: Double) -> MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue(
+            uncheckedLogAbs: UncertainValue(
+                Darwin.log(abs(value)),
+                absoluteError: Darwin.log(multiplicativeError)
+            ),
+            uncheckedSign: value.sign
+        )
+    }
+
+    /// Creates a multiplicative uncertain value from log-space without validation.
+    ///
+    /// Use this when you have already validated the inputs or they come from a trusted source.
+    /// - Parameters:
+    ///   - logAbs: Log of absolute value with error in log-space. Must be finite.
+    ///   - sign: Sign of the value (.plus or .minus).
+    /// - Precondition: logAbs.value.isFinite, logAbs.absoluteError.isFinite
+    /// - Returns: A new MultiplicativeUncertainValue.
+    public static func unchecked(logAbs: UncertainValue, sign: FloatingPointSign) -> MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue(uncheckedLogAbs: logAbs, uncheckedSign: sign)
     }
 
     /// The central value with sign applied.
@@ -82,7 +133,7 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     }
     
     public var flippedSign: MultiplicativeUncertainValue {
-        MultiplicativeUncertainValue(logAbs: logAbs, sign: sign == .minus ? .plus : .minus)
+        .unchecked(logAbs: logAbs, sign: sign == .minus ? .plus : .minus)
     }
 }
 
@@ -91,5 +142,5 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
 extension MultiplicativeUncertainValue {
     /// The multiplicative identity (one with no uncertainty).
     /// - value = 1.0, multiplicativeError = 1.0
-    public static let one = MultiplicativeUncertainValue.exp(.zero)
+    public static let one: MultiplicativeUncertainValue = .unchecked(value: 1.0, multiplicativeError: 1.0)
 }

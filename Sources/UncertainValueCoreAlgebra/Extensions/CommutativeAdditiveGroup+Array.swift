@@ -19,8 +19,10 @@ public extension Array where Element: CommutativeAdditiveGroup {
 public extension Array where Element: CommutativeAdditiveGroup & Scalable {
     /// Mean of all values with error propagation using the specified norm.
     /// - Parameter strategy: The norm strategy for combining absolute errors.
-    /// - Returns: Mean with combined uncertainty, or nil for empty array.
-    func mean(using strategy: Element.Norm) -> Element? {
-        return sum(using: strategy).scaledDown(by: Element.Scalar(count))
+    /// - Returns: Mean with combined uncertainty.
+    /// - Throws: `UncertainValueError.emptyCollection` for empty array.
+    func mean(using strategy: Element.Norm) throws -> Element {
+        guard !isEmpty else { throw UncertainValueError.emptyCollection }
+        return try sum(using: strategy).scaledDown(by: Element.Scalar(count))
     }
 }

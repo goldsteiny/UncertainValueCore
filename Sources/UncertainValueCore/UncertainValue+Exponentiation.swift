@@ -20,7 +20,10 @@ infix operator ** : ExponentiationPrecedence
 /// - Parameters:
 ///   - lhs: The base value with uncertainty.
 ///   - rhs: The exponent.
-/// - Returns: Result with propagated error, or nil if base <= 0.
-public func ** (lhs: UncertainValue, rhs: Double) -> UncertainValue? {
-    lhs.raised(to: rhs)
+/// - Returns: Result with propagated error.
+/// - Throws: `UncertainValueError.negativeInput` if base < 0,
+///           `UncertainValueError.invalidValue` if base is 0 with error or non-positive exponent,
+///           `UncertainValueError.nonFinite` if result overflows/underflows.
+public func ** (lhs: UncertainValue, rhs: Double) throws -> UncertainValue {
+    try lhs.raised(to: rhs)
 }

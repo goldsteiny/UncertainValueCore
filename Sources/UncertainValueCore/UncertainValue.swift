@@ -14,7 +14,7 @@ import UncertainValueCoreAlgebra
 /// Represents measurements with error for physics lab calculations.
 ///
 /// Conforms to commutative algebra protocols for norm-aware addition and multiplication.
-public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWithZero, SignedRaisable, UncertainValueCoreAlgebra.SignMagnitudeProviding, AbsoluteErrorProviding {
+public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWithZero, SignedRaisable, SignMagnitudeProviding, AbsoluteErrorProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// Norm strategy type for protocol conformance.
@@ -78,29 +78,44 @@ public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWit
 extension UncertainValue {
     
     /// Scales up by a constant factor.
-    /// - Returns: Result, or nil if scalar is zero or non-finite.
-    public func scaledUp(by scalar: Double) -> UncertainValue? {
-        guard scalar != 0, scalar.isFinite else { return nil }
+    /// - Parameter scalar: Scale factor (must be non-zero and finite).
+    /// - Returns: Scaled value.
+    /// - Throws: `UncertainValueError.invalidScale` if scalar is zero or non-finite.
+    public func scaledUp(by scalar: Double) throws -> UncertainValue {
+        guard scalar != 0, scalar.isFinite else {
+            throw UncertainValueError.invalidScale
+        }
         return multiplying(by: scalar)
     }
-    
+
     /// Raises value to a real power with error propagation.
     /// - Parameter p: The exponent.
-    /// - Returns: Result with propagated error, or nil if base <= 0 or non-finite.
-    public func raised(to p: Double) -> UncertainValue? {
+    /// - Returns: Result with propagated error.
+    /// - Throws: `UncertainValueError.negativeInput` if base < 0,
+    ///           `UncertainValueError.invalidValue` if base is 0 with error or non-positive exponent,
+    ///           `UncertainValueError.nonFinite` if result overflows/underflows.
+    public func raised(to p: Double) throws -> UncertainValue {
         if value == 0 {
-            guard absoluteError == 0, p > 0 else { return nil }
+            guard absoluteError == 0, p > 0 else {
+                throw UncertainValueError.invalidValue
+            }
             return .zero
         }
 
-        guard value > 0 else { return nil }
+        guard value > 0 else {
+            throw UncertainValueError.negativeInput
+        }
 
         let newValue = pow(value, p)
-        guard newValue.isFinite else { return nil }
-        
+        guard newValue.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
+
         let newRelError = abs(p) * relativeError
-        guard newRelError.isFinite else { return nil }
-        
+        guard newRelError.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
+
         return UncertainValue.withRelativeError(newValue, newRelError)
     }
 }
@@ -178,11 +193,16 @@ extension UncertainValue {
             return UncertainValue.withRelativeError(1 / value, relativeError)
         }
     }
-    
+
     /// Scales down by a constant factor.
-    /// - Returns: Result, or nil if scalar is zero or non-finite.
-    public func scaledDown(by scalar: Double) -> UncertainValue? {
-        guard scalar != 0, scalar.isFinite else { return nil }
-        return dividing(by: scalar)
+    /// - Parameter scalar: Scale factor (must be non-zero and finite).
+    /// - Returns: Scaled value.
+    /// - Throws: `UncertainValueError.invalidScale` if scalar is zero or non-finite.
+    public func scaledDown(by scalar: Double) throws -> UncertainValue {
+        guard scalar != 0, scalar.isFinite else {
+            throw UncertainValueError.invalidScale
+        }
+        // Safe: we validated scalar is non-zero, so dividing won't throw
+        return try dividing(by: scalar)
     }
 }

@@ -14,17 +14,18 @@ public enum UncertainValueMath {
 
     /// Natural logarithm with error propagation.
     /// - Parameter uv: Input value (must be positive).
-    /// - Returns: ln(x) with propagated error, or nil if x <= 0.
+    /// - Returns: ln(x) with propagated error.
+    /// - Throws: `UncertainValueError.nonPositiveInput` if x <= 0.
     /// - Formula: delta(ln(x)) = delta(x) / x = relError(x)
-    public static func log(_ uv: UncertainValue) -> UncertainValue? {
-        guard uv.value > 0 else { return nil }
+    public static func log(_ uv: UncertainValue) throws -> UncertainValue {
+        guard uv.value > 0 else { throw UncertainValueError.nonPositiveInput }
         return UncertainValue(Darwin.log(uv.value), absoluteError: uv.relativeError)
     }
 
     /// Natural logarithm applied to array.
-    public static func log(_ values: [UncertainValue]) -> [UncertainValue]? {
-        let transformed = values.compactMap(log)
-        return transformed.count == values.count ? transformed : nil
+    /// - Throws: `UncertainValueError.negativeInput` if any value <= 0.
+    public static func log(_ values: [UncertainValue]) throws -> [UncertainValue] {
+        try values.map(log)
     }
 
     /// Exponential function with error propagation.
@@ -63,8 +64,9 @@ public enum UncertainValueMath {
     }
 
     /// Reciprocal (1/x) with error propagation.
-    public static func reciprocal(_ uv: UncertainValue) -> UncertainValue? {
-        uv.reciprocalOrNil
+    /// - Throws: `UncertainValueError.divisionByZero` if x is 0.
+    public static func reciprocal(_ uv: UncertainValue) throws -> UncertainValue {
+        try uv.reciprocal
     }
 
     // MARK: - Multi-Input Functions (require norm strategy)
@@ -105,18 +107,20 @@ public enum UncertainValueMath {
     ///   - x: Numerator value.
     ///   - y: Denominator value.
     ///   - strategy: Norm strategy for combining errors.
-    /// - Returns: Transformation result with error propagation, or nil if invalid.
+    /// - Returns: Transformation result with error propagation.
+    /// - Throws: `UncertainValueError.divisionByZero` if y is 0,
+    ///           `UncertainValueError.invalidValue` if |x/y| >= 1.
     public static func lorentzFactor(
         _ x: UncertainValue,
         _ y: UncertainValue,
         using strategy: NormStrategy
-    ) -> UncertainValue? {
-        guard y.absoluteValue > 0 else { return nil }
+    ) throws -> UncertainValue {
+        guard y.absoluteValue > 0 else { throw UncertainValueError.divisionByZero }
 
         let ratio = x.value / y.value
         let ratioSquared = ratio * ratio
 
-        guard ratioSquared < 1.0 else { return nil }
+        guard ratioSquared < 1.0 else { throw UncertainValueError.invalidValue }
 
         let discriminant = 1.0 - ratioSquared
         let f = 1.0 / Darwin.sqrt(discriminant)
@@ -135,22 +139,23 @@ public enum UncertainValueMath {
     ///   - x: Input value.
     ///   - strategy: Norm strategy for combining errors in the sum.
     /// - Returns: Polynomial evaluation with proper error propagation.
+    /// - Throws: `UncertainValueError.emptyCollection` if coefficients is empty,
+    ///           or any error from `raised(to:)` if x < 0.
     public static func polynomial(
         _ coefficients: [UncertainValue],
         _ x: UncertainValue,
         using strategy: NormStrategy
-    ) -> UncertainValue? {
-        guard !coefficients.isEmpty else { return nil }
+    ) throws -> UncertainValue {
+        guard !coefficients.isEmpty else { throw UncertainValueError.emptyCollection }
 
-        let terms = coefficients.enumerated().compactMap { (i, a) -> UncertainValue? in
+        let terms = try coefficients.enumerated().map { (i, a) -> UncertainValue in
             if i == 0 {
                 return a
             } else {
-                return x.raised(to: i)?.multiplying(a, using: strategy)
+                return try x.raised(to: i).multiplying(a, using: strategy)
             }
         }
 
-        guard terms.count == coefficients.count else { return nil }
         return terms.sum(using: strategy)
     }
 
@@ -161,34 +166,38 @@ public enum UncertainValueMath {
     ///   - values: Values to normalize.
     ///   - denominator: Divisor value.
     ///   - strategy: Norm strategy for combining relative errors.
+    /// - Throws: `UncertainValueError.divisionByZero` if denominator is 0.
     public static func normalize(
         _ values: [UncertainValue],
         by denominator: UncertainValue,
         using strategy: NormStrategy
-    ) -> [UncertainValue]? {
-        let normalized = values.compactMap { $0.dividingOrNil(by: denominator, using: strategy) }
-        return normalized.count == values.count ? normalized : nil
+    ) throws -> [UncertainValue] {
+        try values.map { try $0.dividing(by: denominator, using: strategy) }
     }
 
     /// Normalizes array by its first element (first element becomes 1.0 with zero error).
+    /// - Throws: `UncertainValueError.emptyCollection` if values is empty,
+    ///           `UncertainValueError.divisionByZero` if first element is 0.
     public static func normalizeByFirst(
         _ values: [UncertainValue],
         using strategy: NormStrategy
-    ) -> [UncertainValue]? {
-        guard let first = values.first else { return nil }
-        guard var normalized = normalize(values, by: first, using: strategy) else { return nil }
+    ) throws -> [UncertainValue] {
+        guard !values.isEmpty else { return [] }
+        guard let first = values.first else { throw UncertainValueError.emptyCollection }
+        var normalized = try normalize(values, by: first, using: strategy)
         normalized[0] = UncertainValue.one
         return normalized
     }
 
     /// Average step width between consecutive values using the specified norm strategy.
+    /// - Throws: `UncertainValueError.insufficientElements` if values has fewer than 2 elements.
     public static func averageStepWidth(
         _ values: [UncertainValue],
         using strategy: NormStrategy
-    ) -> UncertainValue? {
+    ) throws -> UncertainValue {
         guard values.count > 1, let first = values.first, let last = values.last else {
-            return nil
+            throw UncertainValueError.insufficientElements(required: 2, actual: values.count)
         }
-        return last.subtracting(first, using: strategy).dividing(by: Double(values.count - 1))
+        return try last.subtracting(first, using: strategy).dividing(by: Double(values.count - 1))
     }
 }
