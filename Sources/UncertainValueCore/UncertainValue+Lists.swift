@@ -6,25 +6,11 @@
 //
 
 import Foundation
-
-
+import UncertainValueCoreAlgebra
 
 // MARK: - Array Helpers
 
 extension Array where Element == UncertainValue {
-    /// Array of central values.
-    public var values: [Double] {
-        map(\.value)
-    }
-    
-    public var absoluteErrors: [Double] {
-        map(\.absoluteError)
-    }
-    
-    public var relativeErrors: [Double] {
-        map(\.relativeError)
-    }
-
     /// Returns the element with the maximum value.
     /// If multiple elements share the maximum value, returns the one with the largest error.
     public var max: UncertainValue? {
@@ -58,28 +44,6 @@ extension Array where Element == UncertainValue {
         }
     }
 
-    /// Computes the norm of the absolute error vector using the specified strategy.
-    /// - Parameter strategy: The norm strategy to use for combining errors.
-    public func absoluteErrorVectorLength(using strategy: NormStrategy) -> Double {
-        norm(absoluteErrors, using: strategy)
-    }
-
-    /// Computes the norm of the relative error vector using the specified strategy.
-    /// - Parameter strategy: The norm strategy to use for combining errors.
-    public func relativeErrorVectorLength(using strategy: NormStrategy) -> Double {
-        norm(relativeErrors, using: strategy)
-    }
-    
-    /// Sums all values with error propagation using the specified norm.
-    ///
-    /// Delegates to `UncertainValue.sum(_:using:)`.
-    ///
-    /// - Parameter strategy: The norm strategy for combining absolute errors.
-    /// - Returns: Sum with combined uncertainty. Empty array returns `.zero`.
-    public func sum(using strategy: NormStrategy) -> UncertainValue {
-        UncertainValue.sum(self, using: strategy)
-    }
-
     /// Mean of all values with error propagation using the specified norm.
     /// - Parameter strategy: The norm strategy for combining absolute errors.
     /// - Returns: Mean with combined uncertainty, or nil for empty array.
@@ -89,16 +53,6 @@ extension Array where Element == UncertainValue {
         let n = Double(count)
         // Division by n is safe since count >= 1
         return UncertainValue(total.value / n, absoluteError: total.absoluteError / n)
-    }
-
-    /// Multiplies all values with error propagation using the specified norm.
-    ///
-    /// Delegates to `UncertainValue.product(_:using:)`.
-    ///
-    /// - Parameter strategy: The norm strategy for combining relative errors.
-    /// - Returns: Product with combined uncertainty. Empty array returns `.one`.
-    public func product(using strategy: NormStrategy) -> UncertainValue {
-        UncertainValue.product(self, using: strategy)
     }
 
     /// Computes the L2 norm (Euclidean length) with error propagation.

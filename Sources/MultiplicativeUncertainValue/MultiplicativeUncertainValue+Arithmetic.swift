@@ -7,6 +7,7 @@
 
 import Foundation
 import UncertainValueCore
+import UncertainValueCoreAlgebra
 
 // MARK: - Unary Operations
 
@@ -15,12 +16,6 @@ extension MultiplicativeUncertainValue {
     /// - Returns: New value with same logAbs, sign forced to .plus.
     public var absolute: MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(logAbs: logAbs, sign: .plus)
-    }
-
-    /// Absolute value |x|.
-    /// - Returns: New value with same logAbs, sign forced to .plus.
-    public var absValue: MultiplicativeUncertainValue {
-        absolute
     }
     
     /// Negation (-x).
@@ -66,26 +61,15 @@ extension MultiplicativeUncertainValue {
 extension MultiplicativeUncertainValue {
     /// Scales by a non-zero constant.
     /// - Parameter alpha: Scale factor (must be non-zero).
-    /// - Returns: Scaled value with same multiplicative error.
-    /// - Precondition: lambda != 0 (MultiplicativeUncertainValue cannot represent zero).
-    public func scaledUp(by alpha: Double) -> MultiplicativeUncertainValue {
-        precondition(alpha != 0, "Cannot scale to zero: MultiplicativeUncertainValue cannot represent 0")
-        precondition(alpha.isFinite, "Scale factor must be finite")
+    /// - Returns: Scaled value with same multiplicative error, or nil if alpha is zero or non-finite.
+    public func scaledUp(by alpha: Double) -> MultiplicativeUncertainValue? {
+        guard alpha != 0, alpha.isFinite else { return nil }
 
         let newLogValue = logAbs.value + Darwin.log(abs(alpha))
         let newLogAbs = UncertainValue(newLogValue, absoluteError: logAbs.absoluteError)
         let newSign = [sign, alpha.sign].product()
 
         return MultiplicativeUncertainValue(logAbs: newLogAbs, sign: newSign)
-    }
-
-    /// Divides by a non-zero constant.
-    /// - Parameter lambda: Divisor (must be non-zero).
-    /// - Returns: Scaled value with same multiplicative error.
-    /// - Precondition: lambda != 0.
-    public func scaledDown(by lambda: Double) -> MultiplicativeUncertainValue {
-        precondition(lambda != 0, "Cannot divide by zero")
-        return scaledUp(by: 1.0 / lambda)
     }
 }
 

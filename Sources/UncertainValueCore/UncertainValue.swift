@@ -6,17 +6,19 @@
 //
 
 import Foundation
+import UncertainValueCoreAlgebra
 
 // MARK: - Core Type
 
 /// A value with associated 1-sigma uncertainty.
 /// Represents measurements with error for physics lab calculations.
 ///
-/// Conforms to `UncertainAdditive` and `InvertibleUncertainMultiplicative`,
-/// enabling protocol-derived array operations like `sum(using:)` and `product(using:)`.
-public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, InvertibleUncertainMultiplicative, SignMagnitudeProviding {
+/// Conforms to commutative algebra protocols for norm-aware addition and multiplication.
+public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWithZero, SignedRaisable, UncertainValueCoreAlgebra.SignMagnitudeProviding, AbsoluteErrorProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
+    /// Norm strategy type for protocol conformance.
+    public typealias Norm = NormStrategy
     /// The central value.
     public let value: Double
 
@@ -55,26 +57,7 @@ public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, In
         let totalAbsError = abs(absoluteError) + abs(value * relativeError)
         return UncertainValue(value, absoluteError: totalAbsError)
     }
-
-    /// Relative 1-sigma uncertainty: sigma / |x|.
-    /// - Returns 0 if both value and error are 0.
-    /// - Returns +infinity if value is 0 but error is non-zero.
-    public var relativeError: Double {
-        let denom = abs(value)
-        guard denom > 0 else { return absoluteError == 0 ? 0 : .infinity }
-        return absoluteError / denom
-    }
-
-    /// Variance (squared uncertainty).
-    public var variance: Double {
-        absoluteError * absoluteError
-    }
     
-    /// Absolute value of the central value.
-    public var absoluteValue: Double {
-        abs(value)
-    }
-
     /// Sign of the central value.
     public var signum: Signum {
         if value == 0 {
@@ -82,12 +65,32 @@ public struct UncertainValue: Hashable, Sendable, Codable, UncertainAdditive, In
         }
         return value.sign == .minus ? .negative : .positive
     }
+    
+    /// Absolute value of the central value (error unchanged).
+    public var absolute: UncertainValue {
+        UncertainValue(absoluteValue, absoluteError: absoluteError)
+    }
 }
 
 
-// MARK: - Single-Value Operations
+// MARK: - Single-Scalar Protocol-Required Operations
 
 extension UncertainValue {
+    
+    /// Scales up by a constant factor.
+    /// - Returns: Result, or nil if scalar is zero or non-finite.
+    public func scaledUp(by scalar: Double) -> UncertainValue? {
+        guard scalar != 0, scalar.isFinite else { return nil }
+        return multiplying(by: scalar)
+    }
+
+    /// Scales down by a constant factor.
+    /// - Returns: Result, or nil if scalar is zero or non-finite.
+    public func scaledDown(by scalar: Double) -> UncertainValue? {
+        guard scalar != 0, scalar.isFinite else { return nil }
+        return dividing(by: scalar)
+    }
+    
     /// Raises value to a real power with error propagation.
     /// - Parameter p: The exponent.
     /// - Returns: Result with propagated error, or nil if base <= 0 or non-finite.
@@ -95,13 +98,13 @@ extension UncertainValue {
         guard value > 0 else { return nil }
         let newValue = pow(value, p)
         guard newValue.isFinite else { return nil }
-
+        
         let newRelError = abs(p) * relativeError
         guard newRelError.isFinite else { return nil }
-
+        
         return UncertainValue.withRelativeError(newValue, newRelError)
     }
-
+    
     /// Raises value to an integer power (allows negative bases).
     /// - Parameter n: Integer exponent.
     /// - Returns: Result with propagated error, or nil if invalid (e.g., 0^negative, non-finite).
@@ -110,39 +113,19 @@ extension UncertainValue {
             guard absoluteError == 0, n > 0 else { return nil }
             return UncertainValue(0.0, absoluteError: 0.0)
         }
-
+        
         let newValue = pow(value, Double(n))
         guard newValue.isFinite else { return nil }
-
+        
         let newRelError = abs(Double(n)) * relativeError
         guard newRelError.isFinite else { return nil }
-
+        
         return UncertainValue.withRelativeError(newValue, newRelError)
-    }
-
-    /// Absolute value of the central value (error unchanged).
-    public var absolute: UncertainValue {
-        UncertainValue(abs(value), absoluteError: absoluteError)
-    }
-
-    /// Negates the value (error unchanged).
-    public var negative: UncertainValue {
-        UncertainValue(-value, absoluteError: absoluteError)
-    }
-
-    /// Computes reciprocal (1/x) with error propagation.
-    /// - Returns: Reciprocal with propagated error.
-    /// - Throws: `UncertainValueError.divisionByZero` when value is 0.
-    /// - Formula: relError(1/x) = relError(x)
-    public var reciprocal: UncertainValue {
-        get throws {
-            guard value != 0 else { throw UncertainValueError.divisionByZero }
-            return UncertainValue.withRelativeError(1 / value, relativeError)
-        }
     }
 }
 
-// MARK: - Common Constants
+
+// MARK: - Protocol-Required Static Constants & Methods
 
 extension UncertainValue {
     /// Zero with no uncertainty.
@@ -151,19 +134,9 @@ extension UncertainValue {
     /// One with no uncertainty.
     public static let one = UncertainValue(1, absoluteError: 0)
 
-    /// Pi with no uncertainty.
-    public static let pi = UncertainValue(Double.pi, absoluteError: 0)
-
-    /// Euler's number (e) with no uncertainty.
-    public static let e = UncertainValue(M_E, absoluteError: 0)
-}
-
-// MARK: - Protocol-Required Static Methods
-
-extension UncertainValue {
     /// Sums an array of values with error propagation using the specified norm.
     ///
-    /// This is the primitive operation for the `UncertainAdditive` protocol.
+    /// This is the primitive operation for the `CommutativeAdditiveGroup` protocol.
     /// Uses direct formula: sum.value = Σ values, sum.error = norm(errors).
     ///
     /// - Parameters:
@@ -179,7 +152,7 @@ extension UncertainValue {
 
     /// Computes the product of an array of values with error propagation using the specified norm.
     ///
-    /// This is the primitive operation for the `UncertainMultiplicative` protocol.
+    /// This is the primitive operation for the `CommutativeMultiplicativeGroupWithZero` protocol.
     /// Uses direct formula: product.value = Π values, product.relError = norm(relErrors).
     ///
     /// - Parameters:
@@ -191,5 +164,37 @@ extension UncertainValue {
         let productValue = values.map(\.value).product
         let combinedRelError = norm(values.map(\.relativeError), using: strategy)
         return UncertainValue.withRelativeError(productValue, combinedRelError)
+    }
+}
+
+// MARK: - Common Constants
+
+extension UncertainValue {
+
+    /// Pi with no uncertainty.
+    public static let pi = UncertainValue(Double.pi, absoluteError: 0)
+
+    /// Euler's number (e) with no uncertainty.
+    public static let e = UncertainValue(M_E, absoluteError: 0)
+}
+
+// MARK: - Overwrite with more efficient implementations
+
+extension UncertainValue {
+
+    /// Negates the value (error unchanged).
+    public var negative: UncertainValue {
+        UncertainValue(-value, absoluteError: absoluteError)
+    }
+
+    /// Computes reciprocal (1/x) with error propagation.
+    /// - Returns: Reciprocal with propagated error.
+    /// - Throws: `UncertainValueError.divisionByZero` when value is 0.
+    /// - Formula: relError(1/x) = relError(x)
+    public var reciprocal: UncertainValue {
+        get throws {
+            guard value != 0 else { throw UncertainValueError.divisionByZero }
+            return UncertainValue.withRelativeError(1 / value, relativeError)
+        }
     }
 }

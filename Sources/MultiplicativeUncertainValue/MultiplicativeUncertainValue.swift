@@ -8,6 +8,7 @@
 import Foundation
 import Darwin
 import UncertainValueCore
+import UncertainValueCoreAlgebra
 
 // MARK: - Core Type
 
@@ -16,10 +17,12 @@ import UncertainValueCore
 /// Unlike `UncertainValue`, this type cannot represent zero, so operations like
 /// `reciprocal` and `dividing` always succeed without throwing.
 ///
-/// Conforms to `NonZeroInvertibleUncertainMultiplicative` to share protocol-derived list operations.
-public struct MultiplicativeUncertainValue: Sendable, NonZeroInvertibleUncertainMultiplicative, SignMagnitudeProviding {
+/// Conforms to commutative multiplicative protocols for norm-aware multiplication.
+public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeGroupWithoutZero, Scalable, SignedRaisable, UncertainValueCoreAlgebra.SignMagnitudeProviding, RelativeErrorProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
+    /// Norm strategy type for protocol conformance.
+    public typealias Norm = NormStrategy
     /// Sign of the original value.
     public let sign: FloatingPointSign
 

@@ -11,6 +11,7 @@ import Foundation
 // MARK: - Constant Operations (no norm needed - only one uncertainty source)
 
 extension UncertainValue {
+
     /// Adds a constant (no norm needed - single error source).
     public func adding(_ constant: Double) -> UncertainValue {
         UncertainValue(value + constant, absoluteError: absoluteError)

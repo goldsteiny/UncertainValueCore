@@ -4,9 +4,12 @@ This document defines the intended public API surface and the error-handling con
 
 ## Stable Modules
 
-- UncertainValueCore
-  - Public types: UncertainValue, NormStrategy, MeasurementMath
+- UncertainValueCoreAlgebra
+  - Algebra protocols and base structures
+  - Public types: NormStrategy
   - Public functions: norm1, norm2, normp, norm
+- UncertainValueCore
+  - Public types: UncertainValue, MeasurementMath
   - Array extensions for [UncertainValue] and [Double]
 - UncertainValueConvenience
   - Operator overloads for UncertainValue using L2

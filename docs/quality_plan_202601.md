@@ -35,65 +35,16 @@
 - Avoid naming conflicts with stdlib protocols (do not use MultiplicativeArithmetic).
 
 ## Protocol Design Proposal (Session 2 anchor)
-Goal: Build shared surfaces for multiplicative and additive operations, then migrate UncertainValue and MultiplicativeUncertainValue to rely on protocol defaults where possible.
-
-Proposed multiplicative protocol (name and exact signature to finalize in Session 2):
-
-```
-public protocol UncertainMultiplicative: Sendable {
-    associatedtype Scalar: BinaryFloatingPoint
-
-    static var one: Self { get }
-
-    func multiplying(_ other: Self, using strategy: NormStrategy) -> Self
-    var reciprocal: Self? { get }
-    func raised(to power: Scalar) -> Self?
-}
-
-public extension UncertainMultiplicative {
-    func dividing(by other: Self, using strategy: NormStrategy) -> Self? {
-        other.reciprocal?.multiplying(self, using: strategy)
-    }
-}
-
-public extension Array where Element: UncertainMultiplicative {
-    func product(using strategy: NormStrategy) -> Element {
-        reduce(.one) { $0.multiplying($1, using: strategy) }
-    }
-}
-```
-
-Proposed additive protocol (name and exact signature to finalize in Session 2):
-
-```
-public protocol UncertainAdditive: Sendable {
-    associatedtype Scalar: BinaryFloatingPoint
-
-    static var zero: Self { get }
-
-    func adding(_ other: Self, using strategy: NormStrategy) -> Self
-    var negative: Self { get }
-}
-
-public extension UncertainAdditive {
-    func subtracting(_ other: Self, using strategy: NormStrategy) -> Self {
-        adding(other.negative, using: strategy)
-    }
-}
-
-public extension Array where Element: UncertainAdditive {
-    func sum(using strategy: NormStrategy) -> Element {
-        reduce(.zero) { $0.adding($1, using: strategy) }
-    }
-}
-```
-
-Notes:
-- Optional reciprocal allows UncertainValue to return nil for zero, while MultiplicativeUncertainValue may always succeed.
-- Additive and multiplicative protocols are intentionally separate to avoid over-constraining types.
-- Array sum/product via reduce should be tested against current implementations to preserve numerical behavior.
-- Conformance targets: UncertainValue (both additive and multiplicative), MultiplicativeUncertainValue (multiplicative).
-- Use @inlinable for protocol defaults that are part of the public API.
+This is now implemented in `UncertainValueCoreAlgebra` (see `Sources/UncertainValueCoreAlgebra`).
+The shared protocol surface includes:
+- Zero/one identities (`ZeroContaining`, `OneContaining`)
+- Additive structures (`AdditiveGroup`, `CommutativeAdditiveGroup`, `AlgebraicVector`)
+- Multiplicative structures with/without zero (`MultiplicativeGroupWithZero`, `MultiplicativeGroupWithoutZero`, and commutative variants)
+- Combined algebra structures (`AlgebraWithZero`, `AlgebraWithoutZero`, commutative variants)
+- Scaling (`Scalable`)
+- Exponentiation (`DiscreteRaisable`, `SignedRaisable`)
+- Sign and magnitude (`SignumProvidingBase`, `SignumProviding`, `SignMagnitudeProviding`)
+- Value/error semantics (`ValueProviding`, `RelativeErrorProviding`, `AbsoluteErrorProviding`)
 
 ## Coverage Map
 - Sources/UncertainValueCore: Sessions 2-5
@@ -116,9 +67,9 @@ Exit criteria:
 - Public API boundaries and failure modes are documented.
 
 ### Session 2 - Protocol Foundation (Additive + Multiplicative)
-Scope: Sources/UncertainValueCore/ (new protocols), Sources/MultiplicativeUncertainValue/
+Scope: Sources/UncertainValueCoreAlgebra/, Sources/UncertainValueCore/, Sources/MultiplicativeUncertainValue/
 Diffs:
-1) Finalize and introduce UncertainMultiplicative and UncertainAdditive protocols and default implementations.
+1) Introduce UncertainValueCoreAlgebra protocol surface and defaults.
 2) Add Array extensions for sum(using:) and product(using:), plus derived helpers (subtracting/dividing).
 3) Conform UncertainValue and MultiplicativeUncertainValue; remove duplicated list-ops where possible.
 Tests:
@@ -151,7 +102,7 @@ Exit criteria:
 - UncertainValue relies on protocol defaults for shared behavior.
 
 ### Session 5 - Norm Strategy and Numerical Robustness
-Scope: Sources/UncertainValueCore/NormStrategy.swift
+Scope: Sources/UncertainValueCoreAlgebra/NormStrategy.swift
 Diffs:
 1) Validate NormStrategy.lp(p) (p > 0, finite) and define behavior for invalid p.
 2) Add explicit handling for non-finite inputs (NaN/inf) in norm functions.

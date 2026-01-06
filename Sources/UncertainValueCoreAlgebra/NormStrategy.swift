@@ -1,6 +1,6 @@
 //
 //  NormStrategy.swift
-//  UncertainValueCore
+//  UncertainValueCoreAlgebra
 //
 //  Pure norm definitions for error propagation calculations.
 //

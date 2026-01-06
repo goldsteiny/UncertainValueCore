@@ -10,6 +10,10 @@ let package = Package(
     ],
     products: [
         .library(
+            name: "UncertainValueCoreAlgebra",
+            targets: ["UncertainValueCoreAlgebra"]
+        ),
+        .library(
             name: "UncertainValueCore",
             targets: ["UncertainValueCore"]
         ),
@@ -28,15 +32,19 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "UncertainValueCore"
+            name: "UncertainValueCoreAlgebra"
+        ),
+        .target(
+            name: "UncertainValueCore",
+            dependencies: ["UncertainValueCoreAlgebra"]
         ),
         .target(
             name: "UncertainValueConvenience",
-            dependencies: ["UncertainValueCore"]
+            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra"]
         ),
         .target(
             name: "MultiplicativeUncertainValue",
-            dependencies: ["UncertainValueCore"]
+            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra"]
         ),
         .target(
             name: "UncertainValueStatistics",
@@ -44,7 +52,7 @@ let package = Package(
         ),
         .testTarget(
             name: "UncertainValueCoreTests",
-            dependencies: ["UncertainValueCore", "UncertainValueStatistics"]
+            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra", "UncertainValueStatistics"]
         ),
         .testTarget(
             name: "UncertainValueConvenienceTests",

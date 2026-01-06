@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UncertainValueCoreAlgebra
 import Darwin
 
 public enum MeasurementMath {

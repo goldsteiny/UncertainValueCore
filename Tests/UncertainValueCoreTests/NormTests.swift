@@ -7,6 +7,7 @@
 
 import Testing
 @testable import UncertainValueCore
+import UncertainValueCoreAlgebra
 import Foundation
 
 struct NormTests {
@@ -153,4 +154,3 @@ struct NormTests {
         #expect(set.count == 3)
     }
 }
-

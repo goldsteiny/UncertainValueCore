@@ -8,6 +8,7 @@
 
 import Foundation
 import UncertainValueCore
+import UncertainValueCoreAlgebra
 
 extension Array where Element == Double {
     /// Computes the sample standard deviation.
@@ -21,7 +22,7 @@ extension Array where Element == Double {
         let mean = valuesMean
         let deviations = map { $0 - mean }
 
-        return deviations.normalizedScalableReduce { UncertainValueCore.norm2($0) } / Darwin.sqrt(n - 1)
+        return deviations.normalizedScalableReduce { UncertainValueCoreAlgebra.norm2($0) } / Darwin.sqrt(n - 1)
     }
 }
 
@@ -42,7 +43,7 @@ extension Array where Element == UncertainValue {
         let mean = vals.valuesMean
         let scaledDeviations = vals.map { ($0 - mean) / Darwin.sqrt(n - 1) }
         let scaledErrors: [Double] = zip(scaledDeviations, absoluteErrors).map(*)
-        let resultError = UncertainValueCore.norm2(scaledErrors)
+        let resultError = UncertainValueCoreAlgebra.norm2(scaledErrors)
 
         return UncertainValue(resultValue, absoluteError: resultError)
     }

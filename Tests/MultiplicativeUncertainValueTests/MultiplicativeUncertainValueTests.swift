@@ -442,7 +442,7 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testAbsValuePositive() {
         let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.1)
-        let abs = muv.absValue
+        let abs = muv.absolute
 
         XCTAssertEqual(abs.value, 5.0, accuracy: 1e-10)
         XCTAssertEqual(abs.sign, .plus)
@@ -450,7 +450,7 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testAbsValueNegative() {
         let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
-        let abs = muv.absValue
+        let abs = muv.absolute
 
         XCTAssertEqual(abs.value, 5.0, accuracy: 1e-10)
         XCTAssertEqual(abs.sign, .plus)
@@ -458,7 +458,7 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testAbsValuePreservesLogAbs() {
         let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
-        let abs = muv.absValue
+        let abs = muv.absolute
 
         XCTAssertEqual(abs.logAbs.value, muv.logAbs.value, accuracy: 1e-10)
         XCTAssertEqual(abs.logAbs.absoluteError, muv.logAbs.absoluteError, accuracy: 1e-10)
@@ -466,8 +466,8 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testAbsValueIdempotent() {
         let muv = MultiplicativeUncertainValue(value: -5.0, multiplicativeError: 1.1)
-        let abs1 = muv.absValue
-        let abs2 = abs1.absValue
+        let abs1 = muv.absolute
+        let abs2 = abs1.absolute
 
         XCTAssertEqual(abs2.value, abs1.value, accuracy: 1e-10)
         XCTAssertEqual(abs2.sign, abs1.sign)
@@ -810,7 +810,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledUpPositiveByPositive() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledUp(by: 3.0)
+        guard let scaled = muv.scaledUp(by: 3.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, 6.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -819,7 +822,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledUpPositiveByNegative() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledUp(by: -3.0)
+        guard let scaled = muv.scaledUp(by: -3.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, -6.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -828,7 +834,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledUpNegativeByPositive() {
         let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledUp(by: 3.0)
+        guard let scaled = muv.scaledUp(by: 3.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, -6.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.sign, .minus)
@@ -836,7 +845,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledUpNegativeByNegative() {
         let muv = MultiplicativeUncertainValue(value: -2.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledUp(by: -3.0)
+        guard let scaled = muv.scaledUp(by: -3.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, 6.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.sign, .plus)
@@ -844,7 +856,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledUpPreservesMultiplicativeError() {
         let muv = MultiplicativeUncertainValue(value: 5.0, multiplicativeError: 1.25)
-        let scaled = muv.scaledUp(by: 10.0)
+        guard let scaled = muv.scaledUp(by: 10.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.multiplicativeError, muv.multiplicativeError, accuracy: 1e-10)
     }
@@ -852,7 +867,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
     func testScaledUpAbsoluteErrorScalesCorrectly() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
         let lambda = 3.0
-        let scaled = muv.scaledUp(by: lambda)
+        guard let scaled = muv.scaledUp(by: lambda) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         // absoluteError = |value| * (multError - 1)
         let originalAbsError = abs(muv.value) * (muv.multiplicativeError - 1)
@@ -863,7 +881,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledDownPositive() {
         let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledDown(by: 2.0)
+        guard let scaled = muv.scaledDown(by: 2.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, 3.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -871,7 +892,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testScaledDownByNegative() {
         let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
-        let scaled = muv.scaledDown(by: -2.0)
+        guard let scaled = muv.scaledDown(by: -2.0) else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(scaled.value, -3.0, accuracy: 1e-10)
         XCTAssertEqual(scaled.sign, .minus)
@@ -899,7 +923,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testDoubleTimesMUV() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let result = 3.0 * muv
+        guard let result = 3.0 * muv else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
         XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -907,7 +934,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testMUVTimesDouble() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let result = muv * 3.0
+        guard let result = muv * 3.0 else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, 6.0, accuracy: 1e-10)
         XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -915,7 +945,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testMUVDividedByDouble() {
         let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
-        let result = muv / 2.0
+        guard let result = muv / 2.0 else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
         XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -923,7 +956,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testDoubleDividedByMUV() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let result = 6.0 / muv
+        guard let result = 6.0 / muv else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, 3.0, accuracy: 1e-10)
         XCTAssertEqual(result.multiplicativeError, 1.1, accuracy: 1e-10)
@@ -931,7 +967,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testNegativeDoubleTimesMUV() {
         let muv = MultiplicativeUncertainValue(value: 2.0, multiplicativeError: 1.1)
-        let result = -3.0 * muv
+        guard let result = -3.0 * muv else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, -6.0, accuracy: 1e-10)
         XCTAssertEqual(result.sign, .minus)
@@ -939,7 +978,10 @@ final class MultiplicativeUncertainValueTests: XCTestCase {
 
     func testMUVDividedByNegativeDouble() {
         let muv = MultiplicativeUncertainValue(value: 6.0, multiplicativeError: 1.1)
-        let result = muv / -2.0
+        guard let result = muv / -2.0 else {
+            XCTFail("Expected scaling by non-zero constant to succeed")
+            return
+        }
 
         XCTAssertEqual(result.value, -3.0, accuracy: 1e-10)
         XCTAssertEqual(result.sign, .minus)

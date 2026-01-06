@@ -4,16 +4,19 @@ This package provides primitives for arithmetic with measurement uncertainty. It
 
 ## Modules and Dependencies
 
+- UncertainValueCoreAlgebra
+  - Algebraic protocol surface and shared primitives
+  - NormStrategy and pure norm functions (norm1/norm2/normp)
 - UncertainValueCore
-  - Core data types (UncertainValue, NormStrategy)
-  - Pure math helpers (norm1/norm2/normp, MeasurementMath)
+  - Core data types (UncertainValue)
+  - MeasurementMath and array helpers
   - Array extensions for aggregation
 - UncertainValueConvenience
   - L2-only operator overloads for ergonomic syntax
-  - Depends on UncertainValueCore
+  - Depends on UncertainValueCore and UncertainValueCoreAlgebra
 - MultiplicativeUncertainValue
   - Log-domain representation for multiplicative uncertainty
-  - Depends on UncertainValueCore
+  - Depends on UncertainValueCore and UncertainValueCoreAlgebra
 - UncertainValueStatistics
   - Arithmetic mean, geometric mean, standard deviation helpers (L2)
   - Depends on UncertainValueCore and MultiplicativeUncertainValue
@@ -27,7 +30,7 @@ This package provides primitives for arithmetic with measurement uncertainty. It
   - relativeError = absoluteError / |value|
   - variance = absoluteError^2
 
-### NormStrategy
+### NormStrategy (UncertainValueCoreAlgebra)
 - Defines how independent errors are combined (L1, L2, Lp)
 - Used in multi-input operations (sum, product, means)
 

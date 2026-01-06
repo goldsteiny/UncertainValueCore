@@ -7,13 +7,14 @@
 
 import Foundation
 import UncertainValueCore
+import UncertainValueCoreAlgebra
 
 // MARK: - Protocol-Required Static Method
 
 extension MultiplicativeUncertainValue {
     /// Computes the product of an array of values with error propagation using the specified norm.
     ///
-    /// This is the primitive operation for the `UncertainMultiplicative` protocol.
+    /// This is the primitive operation for the `CommutativeMultiplicativeGroupWithoutZero` protocol.
     /// Uses log-space formula: product = exp(sum(logAbs)), with sign = parity of negative count.
     ///
     /// - Parameters:
