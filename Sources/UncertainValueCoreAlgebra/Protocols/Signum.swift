@@ -14,6 +14,12 @@ public enum Signum: Int, Sendable, Codable, CaseIterable {
     case positive = 1
 }
 
+public extension Signum {
+    var flipped: Signum {
+        Signum(rawValue: -rawValue)!
+    }
+}
+
 /// Base protocol for types that can report sign (negative/zero/positive).
 public protocol SignumProvidingBase: Sendable {
     var signum: Signum { get }

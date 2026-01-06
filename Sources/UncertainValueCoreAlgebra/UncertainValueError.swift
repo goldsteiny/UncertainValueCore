@@ -26,6 +26,9 @@ public enum UncertainValueError: Error, Equatable, Sendable {
 
     /// Operation requires a positive or zero input (e.g., logarithm).
     case negativeInput
+    
+    /// Operation requires a non-zero input (e.g., log(abs(x))).
+    case zeroInput
 
     /// Scale factor is invalid (zero or non-finite).
     case invalidScale
@@ -38,4 +41,7 @@ public enum UncertainValueError: Error, Equatable, Sendable {
 
     /// Multiplicative error must be >= 1.
     case invalidMultiplicativeError
+
+    /// Collection contains elements with inconsistent signs.
+    case mixedSigns
 }

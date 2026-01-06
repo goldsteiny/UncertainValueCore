@@ -12,43 +12,56 @@ import MultiplicativeUncertainValue
 import UncertainValueCoreAlgebra
 
 extension Array where Element == Double {
-    /// Computes the geometric mean with log-space sample standard deviation as uncertainty.
-    /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(values).
-    /// - Throws:
-    ///   - `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
-    ///   - `UncertainValueError.negativeInput` if any value is non-positive.
-    public func geometricMeanL2() throws -> MultiplicativeUncertainValue {
+    /// Internal implementation for geometric mean computation.
+    /// - Parameter arithmeticMean: Function to compute arithmetic mean of log values.
+    private func geometricMeanL2(using arithmeticMean: ([Double]) throws -> UncertainValue) throws -> MultiplicativeUncertainValue {
         guard count >= 2 else {
             throw UncertainValueError.insufficientElements(required: 2, actual: count)
         }
-        guard allSatisfy({ $0 > 0 }) else {
-            throw UncertainValueError.negativeInput
+        guard allSatisfy({ $0 != 0 }) else {
+            throw UncertainValueError.zeroInput
         }
 
-        let logValues = map { Darwin.log($0) }
-        let logMean = try logValues.arithmeticMeanL2()
+        let allPositive = allSatisfy { $0 > 0 }
+        let allNegative = allSatisfy { $0 < 0 }
+        guard allPositive || allNegative else {
+            throw UncertainValueError.mixedSigns
+        }
 
-        return try MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
+        let logAbsValues = map { Darwin.log(abs($0)) }
+        let logMean = try arithmeticMean(logAbsValues)
+        let resultSignum: Signum = allPositive ? .positive : .negative
+
+        return try MultiplicativeUncertainValue(logAbs: logMean, signum: resultSignum)
+    }
+
+    /// Computes the geometric mean with log-space sample standard deviation as uncertainty.
+    ///
+    /// All values must share the same sign (all positive or all negative).
+    /// The result inherits the common sign.
+    ///
+    /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(|values|).
+    /// - Throws:
+    ///   - `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
+    ///   - `UncertainValueError.invalidValue` if any value is zero.
+    ///   - `UncertainValueError.mixedSigns` if values have inconsistent signs.
+    public func geometricMeanL2() throws -> MultiplicativeUncertainValue {
+        try geometricMeanL2(using: { try $0.arithmeticMeanL2() })
     }
 
     /// Computes the geometric mean with log-space sample standard deviation as uncertainty.
     /// Uses Apple's Accelerate framework (vDSP) for optimized computation.
     /// Recommended for arrays with >1000 elements.
-    /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(values).
+    ///
+    /// All values must share the same sign (all positive or all negative).
+    /// The result inherits the common sign.
+    ///
+    /// - Returns: MultiplicativeUncertainValue where logAbs is the arithmetic mean of log(|values|).
     /// - Throws:
     ///   - `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
-    ///   - `UncertainValueError.negativeInput` if any value is non-positive.
+    ///   - `UncertainValueError.invalidValue` if any value is zero.
+    ///   - `UncertainValueError.mixedSigns` if values have inconsistent signs.
     public func geometricMeanL2_vDSP() throws -> MultiplicativeUncertainValue {
-        guard count >= 2 else {
-            throw UncertainValueError.insufficientElements(required: 2, actual: count)
-        }
-        guard allSatisfy({ $0 > 0 }) else {
-            throw UncertainValueError.negativeInput
-        }
-
-        let logValues = map { Darwin.log($0) }
-        let logMean = try logValues.arithmeticMeanL2_vDSP()
-
-        return try MultiplicativeUncertainValue(logAbs: logMean, sign: .plus)
+        try geometricMeanL2(using: { try $0.arithmeticMeanL2_vDSP() })
     }
 }

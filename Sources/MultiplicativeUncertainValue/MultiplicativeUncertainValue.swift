@@ -18,28 +18,31 @@ import UncertainValueCoreAlgebra
 /// `reciprocal` and `dividing` always succeed without throwing.
 ///
 /// Conforms to commutative multiplicative protocols for norm-aware multiplication.
-public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeGroupWithoutZero, Scalable, SignedRaisable, SignMagnitudeProviding, MultiplicativeErrorProviding {
+public struct MultiplicativeUncertainValue: Sendable, Hashable {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// Norm strategy type for protocol conformance.
     public typealias Norm = NormStrategy
+
     /// Sign of the original value.
     public let signum: Signum
 
     /// Log of absolute value with propagated error.
     public let logAbs: UncertainValue
 
+    // MARK: - Throwing Initializers
+
     /// Creates a multiplicative uncertain value.
     /// - Parameters:
     ///   - value: The central value (must be non-zero and finite).
     ///   - multiplicativeError: The multiplicative error factor (must be >= 1 and finite).
     /// - Throws:
-    ///   - `UncertainValueError.invalidValue` if value is zero.
+    ///   - `UncertainValueError.zeroInput` if value is zero.
     ///   - `UncertainValueError.nonFinite` if value or multiplicativeError is non-finite.
     ///   - `UncertainValueError.invalidMultiplicativeError` if multiplicativeError < 1.
     public init(value: Double, multiplicativeError: Double) throws {
         guard value != 0 else {
-            throw UncertainValueError.invalidValue
+            throw UncertainValueError.zeroInput
         }
         guard value.isFinite else {
             throw UncertainValueError.nonFinite
@@ -51,7 +54,6 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
             throw UncertainValueError.nonFinite
         }
 
-        
         self.signum = value > 0 ? .positive : .negative
         self.logAbs = UncertainValue(
             Darwin.log(abs(value)),
@@ -62,9 +64,8 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     /// Creates a multiplicative uncertain value directly from log-space representation.
     /// - Parameters:
     ///   - logAbs: Log of absolute value with error in log-space.
-    ///   - sign: Sign of the value (.plus or .minus).
+    ///   - signum: Sign of the value (.positive or .negative).
     /// - Throws: `UncertainValueError.nonFinite` if logAbs.value or logAbs.absoluteError is non-finite.
-    /// - Note: Extreme logAbs values may cause overflow (to Inf) or underflow (to 0) when converted back to linear space.
     public init(logAbs: UncertainValue, signum: Signum) throws {
         guard logAbs.value.isFinite, logAbs.absoluteError.isFinite else {
             throw UncertainValueError.nonFinite
@@ -77,9 +78,9 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     // MARK: - Unchecked Factory
 
     /// Private memberwise initializer for unchecked creation.
-    private init(uncheckedLogAbs: UncertainValue, uncheckedSign: Signum) {
+    private init(uncheckedLogAbs: UncertainValue, uncheckedSignum: Signum) {
         self.logAbs = uncheckedLogAbs
-        self.signum = uncheckedSign
+        self.signum = uncheckedSignum
     }
 
     /// Creates a multiplicative uncertain value without validation.
@@ -88,7 +89,6 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     /// - Parameters:
     ///   - value: The central value. Must be non-zero and finite.
     ///   - multiplicativeError: The multiplicative error factor. Must be >= 1 and finite.
-    /// - Precondition: value != 0, value.isFinite, multiplicativeError >= 1, multiplicativeError.isFinite
     /// - Returns: A new MultiplicativeUncertainValue.
     public static func unchecked(value: Double, multiplicativeError: Double) -> MultiplicativeUncertainValue {
         MultiplicativeUncertainValue(
@@ -96,7 +96,7 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
                 Darwin.log(abs(value)),
                 absoluteError: Darwin.log(multiplicativeError)
             ),
-            uncheckedSign: value > 0 ? .positive : .negative
+            uncheckedSignum: value > 0 ? .positive : .negative
         )
     }
 
@@ -105,17 +105,20 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     /// Use this when you have already validated the inputs or they come from a trusted source.
     /// - Parameters:
     ///   - logAbs: Log of absolute value with error in log-space. Must be finite.
-    ///   - sign: Sign of the value (.plus or .minus).
-    /// - Precondition: logAbs.value.isFinite, logAbs.absoluteError.isFinite
+    ///   - signum: Sign of the value (.positive or .negative).
     /// - Returns: A new MultiplicativeUncertainValue.
     public static func unchecked(logAbs: UncertainValue, signum: Signum) -> MultiplicativeUncertainValue {
-        MultiplicativeUncertainValue(uncheckedLogAbs: logAbs, uncheckedSign: signum)
+        MultiplicativeUncertainValue(uncheckedLogAbs: logAbs, uncheckedSignum: signum)
     }
+}
 
+// MARK: - Computed Properties
+
+extension MultiplicativeUncertainValue {
     /// The central value with sign applied.
     public var value: Double {
         let absValue = Darwin.exp(logAbs.value)
-        return isPositive ? absValue :  -absValue
+        return isPositive ? absValue : -absValue
     }
 
     /// The multiplicative error factor.
@@ -123,16 +126,128 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
         Darwin.exp(logAbs.absoluteError)
     }
 
-    
+    /// Same value with sign flipped.
     public var flippedSign: MultiplicativeUncertainValue {
-        .unchecked(logAbs: logAbs, signum: isPositive ? .negative : .positive)
+        .unchecked(logAbs: logAbs, signum: signum.flipped)
+    }
+
+    /// Alias for `flippedSign` for protocol symmetry.
+    public var negative: MultiplicativeUncertainValue {
+        flippedSign
     }
 }
 
-// MARK: - Common Constants
+// MARK: - Protocol Conformances
+
+extension MultiplicativeUncertainValue:
+    CommutativeMultiplicativeGroupWithoutZero,
+    Scalable,
+    SignedRaisable,
+    SignMagnitudeProviding,
+    MultiplicativeErrorProviding
+{}
+
+// MARK: - Static Constants (OneContaining)
 
 extension MultiplicativeUncertainValue {
     /// The multiplicative identity (one with no uncertainty).
-    /// - value = 1.0, multiplicativeError = 1.0
-    public static let one: MultiplicativeUncertainValue = .unchecked(value: 1.0, multiplicativeError: 1.0)
+    public static let one: MultiplicativeUncertainValue = MultiplicativeUncertainValue.init(uncheckedLogAbs: .zero, uncheckedSignum: .positive)
+    
+    public var isOne: Bool { isPositive && logAbs.isZero }
+}
+
+// MARK: - Required by CommutativeMultiplicativeGroupWithoutZero
+
+extension MultiplicativeUncertainValue {
+    /// Computes the product of an array of values with error propagation using the specified norm.
+    ///
+    /// This is the primitive operation for the `CommutativeMultiplicativeGroupWithoutZero` protocol.
+    /// Uses log-space formula: product = exp(sum(logAbs)), with sign = parity of negative count.
+    ///
+    /// - Parameters:
+    ///   - values: Array of values to multiply.
+    ///   - strategy: Norm strategy for combining log-space errors.
+    /// - Returns: Product with combined uncertainty. Empty array returns `.one`.
+    public static func product(_ values: [MultiplicativeUncertainValue], using strategy: NormStrategy) -> MultiplicativeUncertainValue {
+        guard !values.isEmpty else { return .one }
+        let sumLogAbs = UncertainValue.sum(values.map(\.logAbs), using: strategy)
+        let productSignum = values.map(\.signum).product()
+        return .unchecked(logAbs: sumLogAbs, signum: productSignum)
+    }
+
+    /// Reciprocal (1/x) in log-space, assuming a non-zero value.
+    ///
+    /// Always succeeds since `MultiplicativeUncertainValue` cannot represent zero.
+    public var reciprocalAssumingNonZero: MultiplicativeUncertainValue {
+        .unchecked(logAbs: logAbs.negative, signum: signum)
+    }
+}
+
+// MARK: - Required by Scalable
+
+extension MultiplicativeUncertainValue {
+    /// Scales by a non-zero constant.
+    /// - Parameter alpha: Scale factor (must be non-zero and finite).
+    /// - Returns: Scaled value with same multiplicative error.
+    /// - Throws: `UncertainValueError.invalidScale` if alpha is zero or non-finite.
+    public func scaledUp(by alpha: Double) throws -> MultiplicativeUncertainValue {
+        guard alpha != 0, alpha.isFinite else {
+            throw UncertainValueError.invalidScale
+        }
+
+        let newLogValue = logAbs.value + Darwin.log(abs(alpha))
+        guard newLogValue.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
+        let newLogAbs = UncertainValue(newLogValue, absoluteError: logAbs.absoluteError)
+        let newSignum: Signum = (alpha > 0) ? signum : signum.flipped
+
+        return .unchecked(logAbs: newLogAbs, signum: newSignum)
+    }
+}
+
+// MARK: - Required by SignedRaisable
+
+extension MultiplicativeUncertainValue {
+    /// Raises to a real power.
+    /// - Parameter p: Real exponent.
+    /// - Returns: Result in log-space.
+    /// - Throws: `UncertainValueError.negativeInput` if sign is negative,
+    ///           `UncertainValueError.nonFinite` if result overflows/underflows.
+    public func raised(to p: Double) throws -> MultiplicativeUncertainValue {
+        guard isPositive else {
+            throw UncertainValueError.negativeInput
+        }
+
+        let newLogAbs = logAbs.multiplying(by: p)
+        guard newLogAbs.value.isFinite && newLogAbs.absoluteError.isFinite else {
+            throw UncertainValueError.nonFinite
+        }
+
+        return .unchecked(logAbs: newLogAbs, signum: .positive)
+    }
+}
+
+// MARK: - Required by SignMagnitudeProviding
+
+extension MultiplicativeUncertainValue {
+    /// Absolute value |x|.
+    /// - Returns: New value with same logAbs, sign forced to .positive.
+    public var absolute: MultiplicativeUncertainValue {
+        .unchecked(logAbs: logAbs, signum: .positive)
+    }
+}
+
+// MARK: - Array Helpers
+
+extension Array where Element == MultiplicativeUncertainValue {
+    /// Multiplies all values with error propagation using the specified norm.
+    ///
+    /// Delegates to `MultiplicativeUncertainValue.product(_:using:)`.
+    ///
+    /// - Parameter strategy: Norm strategy for combining log-space errors.
+    /// - Returns: Product with combined uncertainty. Empty array returns `.one`.
+    public func product(using strategy: NormStrategy) -> MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue.product(self, using: strategy)
+    }
 }
