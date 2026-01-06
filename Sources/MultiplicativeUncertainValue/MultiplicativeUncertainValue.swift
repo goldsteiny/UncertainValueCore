@@ -80,6 +80,10 @@ public struct MultiplicativeUncertainValue: Sendable, CommutativeMultiplicativeG
     public var signum: Signum {
         sign == .minus ? .negative : .positive
     }
+    
+    public var flippedSign: MultiplicativeUncertainValue {
+        MultiplicativeUncertainValue(logAbs: logAbs, sign: sign == .minus ? .plus : .minus)
+    }
 }
 
 // MARK: - Common Constants

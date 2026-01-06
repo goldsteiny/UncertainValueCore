@@ -9,7 +9,7 @@ This package provides primitives for arithmetic with measurement uncertainty. It
   - NormStrategy and pure norm functions (norm1/norm2/normp)
 - UncertainValueCore
   - Core data types (UncertainValue)
-  - MeasurementMath and array helpers
+  - UncertainValueMath and array helpers
   - Array extensions for aggregation
 - UncertainValueConvenience
   - L2-only operator overloads for ergonomic syntax
@@ -39,7 +39,7 @@ This package provides primitives for arithmetic with measurement uncertainty. It
 - Error stored in log space (logAbs.absoluteError)
 - Provides conversions to/from UncertainValue
 
-## MeasurementMath
+## UncertainValueMath
 - Pure functions for log/exp/sin/cos and multi-input functions
 - Invalid domains return nil (e.g., log for non-positive values)
 - Multi-input functions require explicit NormStrategy

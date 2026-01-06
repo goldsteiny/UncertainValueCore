@@ -32,6 +32,14 @@ public extension AdditiveGroup where Self: Scalable {
     }
 }
 
+public extension AdditiveGroup where Self: SignumProvidingBase {
+    /// Default sign flip for additive groups uses negation.
+    @inlinable
+    var flippedSign: Self {
+        negative
+    }
+}
+
 /// Commutative additive group with a list-based sum primitive.
 public protocol CommutativeAdditiveGroup: AdditiveGroup {
     static func sum(_ values: [Self], using strategy: Norm) -> Self
@@ -42,13 +50,5 @@ public extension CommutativeAdditiveGroup {
     @inlinable
     func adding(_ other: Self, using strategy: Norm) -> Self {
         Self.sum([self, other], using: strategy)
-    }
-}
-
-public extension Array where Element: CommutativeAdditiveGroup {
-    /// Sums all elements using the specified norm strategy.
-    @inlinable
-    func sum(using strategy: Element.Norm) -> Element {
-        Element.sum(self, using: strategy)
     }
 }

@@ -1,19 +1,19 @@
 //
-//  MeasurementMathTests.swift
+//  UncertainValueMathTests.swift
 //  UncertainValueCoreTests
 //
-//  Tests for MeasurementMath functions with explicit norm strategies.
+//  Tests for UncertainValueMath functions with explicit norm strategies.
 //
 
 import Testing
 @testable import UncertainValueCore
 
-struct MeasurementMathTests {
+struct UncertainValueMathTests {
     // MARK: - Log Tests
 
     @Test func logPositiveValue() {
         let x = UncertainValue(10.0, absoluteError: 0.5)  // 5% relative error
-        let result = MeasurementMath.log(x)
+        let result = UncertainValueMath.log(x)
 
         #expect(result != nil)
         #expect(abs(result!.value - 2.3026) < 0.001)  // ln(10)
@@ -23,12 +23,12 @@ struct MeasurementMathTests {
 
     @Test func logNegativeReturnsNil() {
         let x = UncertainValue(-10.0, absoluteError: 0.5)
-        #expect(MeasurementMath.log(x) == nil)
+        #expect(UncertainValueMath.log(x) == nil)
     }
 
     @Test func logZeroReturnsNil() {
         let x = UncertainValue(0.0, absoluteError: 0.0)
-        #expect(MeasurementMath.log(x) == nil)
+        #expect(UncertainValueMath.log(x) == nil)
     }
 
     @Test func logArray() {
@@ -36,7 +36,7 @@ struct MeasurementMathTests {
             UncertainValue(10.0, absoluteError: 0.5),
             UncertainValue(100.0, absoluteError: 5.0)
         ]
-        let result = MeasurementMath.log(values)
+        let result = UncertainValueMath.log(values)
 
         #expect(result != nil)
         #expect(result!.count == 2)
@@ -49,14 +49,14 @@ struct MeasurementMathTests {
             UncertainValue(10.0, absoluteError: 0.5),
             UncertainValue(-5.0, absoluteError: 0.5)
         ]
-        #expect(MeasurementMath.log(values) == nil)
+        #expect(UncertainValueMath.log(values) == nil)
     }
 
     // MARK: - Exp Tests
 
     @Test func expValue() {
         let x = UncertainValue(1.0, absoluteError: 0.1)
-        let result = MeasurementMath.exp(x)
+        let result = UncertainValueMath.exp(x)
 
         #expect(abs(result.value - 2.7183) < 0.001)  // e^1
         // relError(e^x) = absoluteError(x) = 0.1
@@ -65,7 +65,7 @@ struct MeasurementMathTests {
 
     @Test func expZero() {
         let x = UncertainValue(0.0, absoluteError: 0.1)
-        let result = MeasurementMath.exp(x)
+        let result = UncertainValueMath.exp(x)
         #expect(abs(result.value - 1.0) < 0.0001)
     }
 
@@ -74,7 +74,7 @@ struct MeasurementMathTests {
             UncertainValue(0.0, absoluteError: 0.1),
             UncertainValue(1.0, absoluteError: 0.1)
         ]
-        let result = MeasurementMath.exp(values)
+        let result = UncertainValueMath.exp(values)
 
         #expect(result.count == 2)
         #expect(abs(result[0].value - 1.0) < 0.0001)    // e^0
@@ -85,7 +85,7 @@ struct MeasurementMathTests {
 
     @Test func sinValue() {
         let x = UncertainValue(0.0, absoluteError: 0.1)
-        let result = MeasurementMath.sin(x)
+        let result = UncertainValueMath.sin(x)
 
         #expect(abs(result.value - 0.0) < 0.0001)
         // delta(sin(0)) = |cos(0)| * 0.1 = 1.0 * 0.1 = 0.1
@@ -94,7 +94,7 @@ struct MeasurementMathTests {
 
     @Test func cosValue() {
         let x = UncertainValue(0.0, absoluteError: 0.1)
-        let result = MeasurementMath.cos(x)
+        let result = UncertainValueMath.cos(x)
 
         #expect(abs(result.value - 1.0) < 0.0001)
         // delta(cos(0)) = |sin(0)| * 0.1 = 0.0 * 0.1 = 0.0
@@ -103,7 +103,7 @@ struct MeasurementMathTests {
 
     @Test func sinAtPiOver2() {
         let x = UncertainValue(.pi / 2, absoluteError: 0.1)
-        let result = MeasurementMath.sin(x)
+        let result = UncertainValueMath.sin(x)
 
         #expect(abs(result.value - 1.0) < 0.0001)
         // delta(sin(pi/2)) = |cos(pi/2)| * 0.1 ≈ 0
@@ -114,7 +114,7 @@ struct MeasurementMathTests {
 
     @Test func reciprocalValue() {
         let x = UncertainValue.withRelativeError(4.0, 0.05)
-        let result = MeasurementMath.reciprocal(x)
+        let result = UncertainValueMath.reciprocal(x)
 
         #expect(result != nil)
         #expect(result!.value == 0.25)
@@ -123,7 +123,7 @@ struct MeasurementMathTests {
 
     @Test func reciprocalZeroReturnsNil() {
         let x = UncertainValue(0.0, absoluteError: 0.0)
-        #expect(MeasurementMath.reciprocal(x) == nil)
+        #expect(UncertainValueMath.reciprocal(x) == nil)
     }
 
     // MARK: - Polynomial
@@ -131,7 +131,7 @@ struct MeasurementMathTests {
     @Test func polynomialConstant() {
         let coeffs = [UncertainValue(5.0, absoluteError: 0.1)]
         let x = UncertainValue(3.0, absoluteError: 0.2)
-        let result = MeasurementMath.polynomial(coeffs, x, using: .l2)
+        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -145,7 +145,7 @@ struct MeasurementMathTests {
             UncertainValue(3.0, absoluteError: 0.1)
         ]
         let x = UncertainValue(4.0, absoluteError: 0.2)
-        let result = MeasurementMath.polynomial(coeffs, x, using: .l2)
+        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(abs(result!.value - 14.0) < 0.0001)
@@ -154,7 +154,7 @@ struct MeasurementMathTests {
     @Test func polynomialEmptyReturnsNil() {
         let coeffs: [UncertainValue] = []
         let x = UncertainValue(3.0, absoluteError: 0.2)
-        #expect(MeasurementMath.polynomial(coeffs, x, using: .l2) == nil)
+        #expect(UncertainValueMath.polynomial(coeffs, x, using: .l2) == nil)
     }
 
     @Test func polynomialWithNegativeX() {
@@ -165,7 +165,7 @@ struct MeasurementMathTests {
             UncertainValue(3.0, absoluteError: 0.0)
         ]
         let x = UncertainValue(-2.0, absoluteError: 0.0)
-        let result = MeasurementMath.polynomial(coeffs, x, using: .l2)
+        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(abs(result!.value - 9.0) < 0.0001)
@@ -179,7 +179,7 @@ struct MeasurementMathTests {
             UncertainValue(3.0, absoluteError: 0.1)
         ]
         let x = UncertainValue(0.0, absoluteError: 0.0)
-        let result = MeasurementMath.polynomial(coeffs, x, using: .l2)
+        let result = UncertainValueMath.polynomial(coeffs, x, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 5.0)
@@ -191,7 +191,7 @@ struct MeasurementMathTests {
     @Test func normalizeValue() {
         let x = UncertainValue(10.0, absoluteError: 0.5)
         let denom = UncertainValue(2.0, absoluteError: 0.1)
-        let result = MeasurementMath.normalize([x], by: denom, using: .l2)
+        let result = UncertainValueMath.normalize([x], by: denom, using: .l2)
 
         #expect(result != nil)
         #expect(result!.count == 1)
@@ -204,7 +204,7 @@ struct MeasurementMathTests {
             UncertainValue(20.0, absoluteError: 1.0),
             UncertainValue(30.0, absoluteError: 1.5)
         ]
-        let result = MeasurementMath.normalizeByFirst(values, using: .l2)
+        let result = UncertainValueMath.normalizeByFirst(values, using: .l2)
 
         #expect(result != nil)
         #expect(result!.count == 3)
@@ -216,7 +216,7 @@ struct MeasurementMathTests {
 
     @Test func normalizeByFirstEmptyReturnsNil() {
         let values: [UncertainValue] = []
-        #expect(MeasurementMath.normalizeByFirst(values, using: .l2) == nil)
+        #expect(UncertainValueMath.normalizeByFirst(values, using: .l2) == nil)
     }
 
     // MARK: - Average Step Width
@@ -229,7 +229,7 @@ struct MeasurementMathTests {
             UncertainValue(6.0, absoluteError: 0.1),
             UncertainValue(8.0, absoluteError: 0.1)
         ]
-        let result = MeasurementMath.averageStepWidth(values, using: .l2)
+        let result = UncertainValueMath.averageStepWidth(values, using: .l2)
 
         #expect(result != nil)
         #expect(result!.value == 2.0)  // (8 - 0) / 4
@@ -237,7 +237,7 @@ struct MeasurementMathTests {
 
     @Test func averageStepWidthSingleValueReturnsNil() {
         let values = [UncertainValue(5.0, absoluteError: 0.1)]
-        #expect(MeasurementMath.averageStepWidth(values, using: .l2) == nil)
+        #expect(UncertainValueMath.averageStepWidth(values, using: .l2) == nil)
     }
 
     // MARK: - Sigmoid (requires norm)
@@ -247,7 +247,7 @@ struct MeasurementMathTests {
         let x0 = UncertainValue(0.0, absoluteError: 0.1)
         let k = UncertainValue(1.0, absoluteError: 0.1)
 
-        let result = MeasurementMath.sigmoid(x, x0, k, using: .l2)
+        let result = UncertainValueMath.sigmoid(x, x0, k, using: .l2)
 
         // At midpoint (x = x0), sigmoid = 0.5
         #expect(abs(result.value - 0.5) < 0.0001)
@@ -258,7 +258,7 @@ struct MeasurementMathTests {
         let x0 = UncertainValue(0.0, absoluteError: 0.1)
         let k = UncertainValue(1.0, absoluteError: 0.1)
 
-        let result = MeasurementMath.sigmoid(x, x0, k, using: .l2)
+        let result = UncertainValueMath.sigmoid(x, x0, k, using: .l2)
 
         // Far above midpoint, sigmoid approaches 1
         #expect(result.value > 0.999)
@@ -270,7 +270,7 @@ struct MeasurementMathTests {
         let x = UncertainValue(0.6, absoluteError: 0.01)  // v = 0.6c
         let y = UncertainValue(1.0, absoluteError: 0.01)  // c = 1
 
-        let result = MeasurementMath.lorentzFactor(x, y, using: .l2)
+        let result = UncertainValueMath.lorentzFactor(x, y, using: .l2)
 
         #expect(result != nil)
         // gamma = 1/sqrt(1 - 0.36) = 1/sqrt(0.64) = 1/0.8 = 1.25
@@ -281,20 +281,20 @@ struct MeasurementMathTests {
         let x = UncertainValue(1.0, absoluteError: 0.01)  // v = c
         let y = UncertainValue(1.0, absoluteError: 0.01)
 
-        #expect(MeasurementMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
     }
 
     @Test func lorentzFactorSuperluminalReturnsNil() {
         let x = UncertainValue(1.5, absoluteError: 0.01)  // v > c
         let y = UncertainValue(1.0, absoluteError: 0.01)
 
-        #expect(MeasurementMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
     }
 
     @Test func lorentzFactorZeroDenominatorReturnsNil() {
         let x = UncertainValue(0.6, absoluteError: 0.01)
         let y = UncertainValue(0.0, absoluteError: 0.01)
 
-        #expect(MeasurementMath.lorentzFactor(x, y, using: .l2) == nil)
+        #expect(UncertainValueMath.lorentzFactor(x, y, using: .l2) == nil)
     }
 }

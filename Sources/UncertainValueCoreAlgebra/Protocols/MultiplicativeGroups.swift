@@ -37,18 +37,6 @@ public extension MultiplicativeGroupWithZero {
     func dividing(by other: Self, using strategy: Norm) throws -> Self {
         try multiplying(other.reciprocal, using: strategy)
     }
-
-    /// Optional convenience for reciprocal.
-    @inlinable
-    var reciprocalOrNil: Self? {
-        try? reciprocal
-    }
-
-    /// Optional convenience for division.
-    @inlinable
-    func dividingOrNil(by other: Self, using strategy: Norm) -> Self? {
-        try? dividing(by: other, using: strategy)
-    }
 }
 
 /// Multiplicative group that cannot represent zero.
@@ -77,11 +65,3 @@ public protocol CommutativeMultiplicativeGroupWithZero: CommutativeMultiplicativ
 
 /// Commutative multiplicative group that cannot represent zero.
 public protocol CommutativeMultiplicativeGroupWithoutZero: CommutativeMultiplicativeGroup, MultiplicativeGroupWithoutZero {}
-
-public extension Array where Element: CommutativeMultiplicativeGroup {
-    /// Computes the product of all elements using the specified norm strategy.
-    @inlinable
-    func product(using strategy: Element.Norm) -> Element {
-        Element.product(self, using: strategy)
-    }
-}

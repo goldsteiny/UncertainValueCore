@@ -1,5 +1,5 @@
 //
-//  MeasurementMath.swift
+//  UncertainValueMath.swift
 //  UncertainValueCore
 //
 //  Mathematical operations on UncertainValue with proper error propagation.
@@ -9,7 +9,7 @@ import Foundation
 import UncertainValueCoreAlgebra
 import Darwin
 
-public enum MeasurementMath {
+public enum UncertainValueMath {
     // MARK: - Transcendental Functions
 
     /// Natural logarithm with error propagation.

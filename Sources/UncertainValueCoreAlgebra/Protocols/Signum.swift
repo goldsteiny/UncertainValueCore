@@ -17,6 +17,7 @@ public enum Signum: Int, Sendable, Codable, CaseIterable {
 /// Base protocol for types that can report sign (negative/zero/positive).
 public protocol SignumProvidingBase: Sendable {
     var signum: Signum { get }
+    var flippedSign: Self { get }
 }
 
 /// Signum provider for types that can represent zero.
@@ -26,18 +27,4 @@ public protocol SignumProviding: SignumProvidingBase, ZeroContaining {}
 public protocol SignMagnitudeProviding: SignumProvidingBase {
     /// Absolute value of the receiver (sign removed).
     var absolute: Self { get }
-}
-
-public extension SignumProvidingBase {
-    var isPositive: Bool {
-        signum == .positive
-    }
-
-    var isNegative: Bool {
-        signum == .negative
-    }
-
-    var isZero: Bool {
-        signum == .zero
-    }
 }

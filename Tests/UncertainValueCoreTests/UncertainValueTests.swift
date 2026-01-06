@@ -364,8 +364,17 @@ struct UncertainValueTests {
         #expect(x.raised(to: 2.0) == nil)
     }
 
-    @Test func powerOfZeroReturnsNil() {
-        let x = UncertainValue(0.0, absoluteError: 0.0)
+    @Test func powerOfZeroNoErrorReturnsZero() {
+        let x = UncertainValue.zero
+        let result = x.raised(to: 2.0)
+
+        #expect(x != nil)
+        #expect(result!.value == 0.0)
+        #expect(result!.absoluteError == 0.0)
+    }
+
+    @Test func powerOfZeroWithErrorReturnsNil() {
+        let x = UncertainValue(0.0, absoluteError: 1.0)
         #expect(x.raised(to: 2.0) == nil)
     }
 

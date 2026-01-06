@@ -8,7 +8,7 @@
 import Foundation
 import UncertainValueCoreAlgebra
 
-// MARK: - Array Helpers
+// MARK: - Array Helpers For Min/Max/AbsMax
 
 extension Array where Element == UncertainValue {
     /// Returns the element with the maximum value.
@@ -25,12 +25,7 @@ extension Array where Element == UncertainValue {
     /// Returns the element with the largest absolute value.
     /// If multiple elements share the same absolute value, returns the one with the largest error.
     public var absMax: UncertainValue? {
-        self.max { a, b in
-            if a.absoluteValue != b.absoluteValue {
-                return a.absoluteValue < b.absoluteValue
-            }
-            return a.absoluteError < b.absoluteError
-        }?.absolute
+        return absolutes.max
     }
     
     /// Returns the element with the minimum value.
@@ -43,17 +38,11 @@ extension Array where Element == UncertainValue {
             return a.absoluteError > b.absoluteError
         }
     }
+}
 
-    /// Mean of all values with error propagation using the specified norm.
-    /// - Parameter strategy: The norm strategy for combining absolute errors.
-    /// - Returns: Mean with combined uncertainty, or nil for empty array.
-    public func mean(using strategy: NormStrategy) -> UncertainValue? {
-        guard count >= 1 else { return nil }
-        let total = sum(using: strategy)
-        let n = Double(count)
-        // Division by n is safe since count >= 1
-        return UncertainValue(total.value / n, absoluteError: total.absoluteError / n)
-    }
+// MARK: Array Helper For Very Simple Array Statistics
+
+extension Array where Element == UncertainValue {
 
     /// Computes the L2 norm (Euclidean length) with error propagation.
     /// Formula: sqrt(sum(x_i^2))

@@ -83,41 +83,22 @@ extension UncertainValue {
         guard scalar != 0, scalar.isFinite else { return nil }
         return multiplying(by: scalar)
     }
-
-    /// Scales down by a constant factor.
-    /// - Returns: Result, or nil if scalar is zero or non-finite.
-    public func scaledDown(by scalar: Double) -> UncertainValue? {
-        guard scalar != 0, scalar.isFinite else { return nil }
-        return dividing(by: scalar)
-    }
     
     /// Raises value to a real power with error propagation.
     /// - Parameter p: The exponent.
     /// - Returns: Result with propagated error, or nil if base <= 0 or non-finite.
     public func raised(to p: Double) -> UncertainValue? {
+        if value == 0 {
+            guard absoluteError == 0, p > 0 else { return nil }
+            return UncertainValue(0.0, absoluteError: 0.0)
+        }
+
         guard value > 0 else { return nil }
+
         let newValue = pow(value, p)
         guard newValue.isFinite else { return nil }
         
         let newRelError = abs(p) * relativeError
-        guard newRelError.isFinite else { return nil }
-        
-        return UncertainValue.withRelativeError(newValue, newRelError)
-    }
-    
-    /// Raises value to an integer power (allows negative bases).
-    /// - Parameter n: Integer exponent.
-    /// - Returns: Result with propagated error, or nil if invalid (e.g., 0^negative, non-finite).
-    public func raised(to n: Int) -> UncertainValue? {
-        if value == 0 {
-            guard absoluteError == 0, n > 0 else { return nil }
-            return UncertainValue(0.0, absoluteError: 0.0)
-        }
-        
-        let newValue = pow(value, Double(n))
-        guard newValue.isFinite else { return nil }
-        
-        let newRelError = abs(Double(n)) * relativeError
         guard newRelError.isFinite else { return nil }
         
         return UncertainValue.withRelativeError(newValue, newRelError)
@@ -178,7 +159,7 @@ extension UncertainValue {
     public static let e = UncertainValue(M_E, absoluteError: 0)
 }
 
-// MARK: - Overwrite with more efficient implementations
+// MARK: - Overwrite with more efficient or non-optional implementations
 
 extension UncertainValue {
 
@@ -196,5 +177,12 @@ extension UncertainValue {
             guard value != 0 else { throw UncertainValueError.divisionByZero }
             return UncertainValue.withRelativeError(1 / value, relativeError)
         }
+    }
+    
+    /// Scales down by a constant factor.
+    /// - Returns: Result, or nil if scalar is zero or non-finite.
+    public func scaledDown(by scalar: Double) -> UncertainValue? {
+        guard scalar != 0, scalar.isFinite else { return nil }
+        return dividing(by: scalar)
     }
 }

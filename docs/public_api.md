@@ -9,7 +9,7 @@ This document defines the intended public API surface and the error-handling con
   - Public types: NormStrategy
   - Public functions: norm1, norm2, normp, norm
 - UncertainValueCore
-  - Public types: UncertainValue, MeasurementMath
+  - Public types: UncertainValue, UncertainValueMath
   - Array extensions for [UncertainValue] and [Double]
 - UncertainValueConvenience
   - Operator overloads for UncertainValue using L2

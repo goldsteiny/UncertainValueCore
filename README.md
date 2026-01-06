@@ -61,8 +61,8 @@ let squared = x.raised(to: 2)                             // x^2
 let inverse = x.reciprocal                                // 1/x
 
 // Transcendental functions
-let logX = MeasurementMath.log(x)                         // ln(x)
-let expX = MeasurementMath.exp(x)                         // e^x
+let logX = UncertainValueMath.log(x)                         // ln(x)
+let expX = UncertainValueMath.exp(x)                         // e^x
 
 // Array operations
 let values = [x, y]
