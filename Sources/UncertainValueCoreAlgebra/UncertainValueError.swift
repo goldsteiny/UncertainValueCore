@@ -8,7 +8,7 @@
 import Foundation
 
 /// Errors thrown by UncertainValue operations.
-public enum UncertainValueError: Error, Equatable, Sendable {
+public enum UncertainValueError: Error, Equatable, Hashable, Sendable {
     /// Attempted division or reciprocal of zero.
     case divisionByZero
 
