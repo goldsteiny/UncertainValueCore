@@ -14,7 +14,7 @@ import UncertainValueCoreAlgebra
 /// Represents measurements with error for physics lab calculations.
 ///
 /// Conforms to commutative algebra protocols for norm-aware addition and multiplication.
-public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWithZero, SignedRaisable, SignMagnitudeProviding, AbsoluteErrorProviding {
+public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWithZero, SignedRaisable, SignMagnitudeProviding, AbsoluteErrorProviding, BoundsProviding {
     /// Scalar type for protocol conformance.
     public typealias Scalar = Double
     /// Norm strategy type for protocol conformance.

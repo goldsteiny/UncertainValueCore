@@ -144,7 +144,8 @@ extension MultiplicativeUncertainValue:
     Scalable,
     SignedRaisable,
     SignMagnitudeProviding,
-    MultiplicativeErrorProviding
+    MultiplicativeErrorProviding,
+    BoundsProviding
 {}
 
 // MARK: - Static Constants (OneContaining)

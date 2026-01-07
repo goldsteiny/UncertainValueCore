@@ -7,6 +7,12 @@
 - Added UncertainValueStatistics module (arithmetic/geometric means and standard deviation helpers).
 - Added UncertainValueCoreAlgebra package for algebra protocols; UncertainValue and MultiplicativeUncertainValue now conform to and build on these protocols.
 
+### New Features
+- Added `BoundsProviding` protocol with `lowerBound`, `upperBound`, and `bounds: ClosedRange<Scalar>` properties for displaying confidence intervals/error bars in UIs.
+  - Conditional default implementations for `AbsoluteErrorProviding` (additive: value ± absoluteError).
+  - Conditional default implementations for `MultiplicativeErrorProviding` (multiplicative: value */ multiplicativeError, handles negative values correctly).
+  - `UncertainValue` and `MultiplicativeUncertainValue` now conform to `BoundsProviding`.
+
 ### Breaking Changes
 
 #### API Renames
