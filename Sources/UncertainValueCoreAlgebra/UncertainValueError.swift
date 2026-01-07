@@ -44,4 +44,11 @@ public enum UncertainValueError: Error, Equatable, Sendable {
 
     /// Collection contains elements with inconsistent signs.
     case mixedSigns
+    
+    /// Result overflowed the representable range.
+    case overflow
+    
+    /// Result underflowed to zero or subnormal.
+    case underflow
+
 }
