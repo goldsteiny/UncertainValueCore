@@ -27,9 +27,17 @@ public protocol BoundsProviding: ValueProviding {
     /// For additive errors: `value + absoluteError`
     /// For multiplicative errors: `max(value * multiplicativeError, value / multiplicativeError)`
     var upperBound: Scalar { get }
+}
 
+public extension BoundsProviding {
+    
     /// Closed interval representing the confidence bounds.
-    ///
-    /// Equivalent to `lowerBound...upperBound`.
-    var bounds: ClosedRange<Scalar> { get }
+    var bounds: ClosedRange<Scalar> {
+        lowerBound...upperBound
+    }
+    
+    /// Returns iff lowerBound == upperBound.
+    var isSinglePoint: Bool {
+        return lowerBound == upperBound
+    }
 }

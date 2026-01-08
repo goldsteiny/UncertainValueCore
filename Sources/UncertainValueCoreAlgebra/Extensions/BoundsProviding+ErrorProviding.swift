@@ -17,11 +17,6 @@ public extension BoundsProviding where Self: AbsoluteErrorProviding {
     var upperBound: Scalar {
         value + absoluteError
     }
-    
-    /// Confidence interval: `[value - absoluteError, value + absoluteError]`
-    var bounds: ClosedRange<Scalar> {
-        lowerBound...upperBound
-    }
 }
 
 // MARK: - Default Implementation for MultiplicativeErrorProviding
@@ -43,11 +38,5 @@ public extension BoundsProviding where Self: MultiplicativeErrorProviding {
     /// - Negative values: `value / multiplicativeError` (less negative)
     var upperBound: Scalar {
         max(value * multiplicativeError, value / multiplicativeError)
-    }
-    
-    /// Confidence interval: `[min(v*m, v/m), max(v*m, v/m)]`
-    /// where `v = value` and `m = multiplicativeError`
-    var bounds: ClosedRange<Scalar> {
-        lowerBound...upperBound
     }
 }
