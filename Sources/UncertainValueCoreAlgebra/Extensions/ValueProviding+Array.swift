@@ -19,6 +19,10 @@ public extension Array where Element: RelativeErrorProviding {
     var relativeErrors: [Element.Scalar] {
         map(\.relativeError)
     }
+    
+    var allErrorFree: Bool {
+        allSatisfy(\.isErrorFree)
+    }
 }
 
 public extension Array where Element: AbsoluteErrorProviding {

@@ -175,11 +175,16 @@ extension UncertainValue {
 
 extension UncertainValue {
 
+    /// A constant value with no uncertainty
+    public static func errorFree(_ value: Double) -> UncertainValue {
+        return UncertainValue(value, absoluteError: 0)
+    }
+    
     /// Pi with no uncertainty.
-    public static let pi = UncertainValue(Double.pi, absoluteError: 0)
+    public static let pi = errorFree(Double.pi)
 
     /// Euler's number (e) with no uncertainty.
-    public static let e = UncertainValue(M_E, absoluteError: 0)
+    public static let e = errorFree(M_E)
 }
 
 // MARK: - Overwrite with more efficient or non-optional implementations
@@ -198,7 +203,7 @@ extension UncertainValue {
     public var reciprocal: UncertainValue {
         get throws {
             guard value != 0 else { throw UncertainValueError.divisionByZero }
-            return UncertainValue.withRelativeError(1 / value, relativeError)
+            return isErrorFree ? UncertainValue.errorFree(1 / value) : UncertainValue.withRelativeError(1 / value, relativeError)
         }
     }
 
