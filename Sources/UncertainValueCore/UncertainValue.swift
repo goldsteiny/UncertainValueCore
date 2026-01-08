@@ -180,6 +180,10 @@ extension UncertainValue {
         return UncertainValue(value, absoluteError: 0)
     }
     
+    public static func errorFree(_ value: Int) -> UncertainValue {
+        return errorFree(Double(value))
+    }
+    
     /// Pi with no uncertainty.
     public static let pi = errorFree(Double.pi)
 
