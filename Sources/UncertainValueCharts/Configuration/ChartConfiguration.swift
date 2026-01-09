@@ -19,7 +19,7 @@ public struct ChartConfiguration: Sendable, Equatable {
         overlays: [ChartOverlayLine] = [],
         xAxis: ChartAxisConfiguration = ChartAxisConfiguration(),
         yAxis: ChartAxisConfiguration = ChartAxisConfiguration(),
-        style: ChartStyle = .default
+        style: ChartStyle = ChartDefaults.style
     ) {
         self.series = series
         self.overlays = overlays
@@ -29,7 +29,7 @@ public struct ChartConfiguration: Sendable, Equatable {
     }
 
     public var shouldShowLegend: Bool {
-        series.count >= ChartConstants.LegendLayout.minimumSeriesCountForLegend || !overlays.isEmpty
+        series.count >= ChartDefaults.LegendLayout.minimumSeriesCountForLegend || !overlays.isEmpty
     }
 
     public func applying(viewport: ChartViewport?) -> ChartConfiguration {

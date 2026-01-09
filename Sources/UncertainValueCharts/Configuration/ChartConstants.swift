@@ -74,3 +74,42 @@ enum ChartConstants {
         }
     }
 }
+
+public enum ChartDefaults {
+    /// Override these defaults early (e.g. app launch) to affect implicit chart configuration.
+    public static var style: ChartStyle = .default
+
+    public enum Axis {
+        public static var gridLineCount: Int = ChartConstants.Axis.defaultGridLineCount
+    }
+
+    public enum AxisFormatting {
+        public static var numberFormatter: NumberFormatter = ChartDefaults.makeAxisNumberFormatter()
+    }
+
+    public enum Gestures {
+        public static var defaultMagnification: CGFloat = ChartConstants.Gestures.defaultMagnification
+        public static var doubleTapCount: Int = ChartConstants.Gestures.doubleTapCount
+    }
+
+    public enum Export {
+        public static var imageScale: CGFloat = ChartConstants.Export.imageScale
+    }
+
+    public enum LegendLayout {
+        public static var lineWidthMultiplier: CGFloat = ChartConstants.LegendLayout.lineWidthMultiplier
+        public static var minimumLineHeight: CGFloat = ChartConstants.LegendLayout.minimumLineHeight
+        public static var lineHeightDivisor: CGFloat = ChartConstants.LegendLayout.lineHeightDivisor
+        public static var minimumSeriesCountForLegend: Int = ChartConstants.LegendLayout.minimumSeriesCountForLegend
+    }
+
+    private static func makeAxisNumberFormatter() -> NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: ChartConstants.AxisFormatting.localeIdentifier)
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = ChartConstants.AxisFormatting.maximumFractionDigits
+        formatter.minimumFractionDigits = ChartConstants.AxisFormatting.minimumFractionDigits
+        formatter.usesGroupingSeparator = ChartConstants.AxisFormatting.usesGroupingSeparator
+        return formatter
+    }
+}

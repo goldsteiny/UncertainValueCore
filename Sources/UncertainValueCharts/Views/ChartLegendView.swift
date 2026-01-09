@@ -19,11 +19,11 @@ public struct ChartLegendView: View {
     public init(
         series: [ChartSeries],
         overlays: [ChartOverlayLine],
-        markerSize: CGFloat = ChartStyle.default.legendStyle.markerSize,
+        markerSize: CGFloat = ChartDefaults.style.legendStyle.markerSize,
         font: Font = .caption,
         foregroundColor: Color = .secondary,
-        rowSpacing: CGFloat = ChartStyle.default.legendStyle.rowSpacing,
-        itemSpacing: CGFloat = ChartStyle.default.legendStyle.itemSpacing
+        rowSpacing: CGFloat = ChartDefaults.style.legendStyle.rowSpacing,
+        itemSpacing: CGFloat = ChartDefaults.style.legendStyle.itemSpacing
     ) {
         let seriesItems = series.map { item in
             LegendItem(id: item.id, label: item.label, color: item.color.swiftUIColor, markerStyle: .circle)
@@ -64,10 +64,10 @@ public struct ChartLegendView: View {
             Capsule()
                 .fill(item.color)
                 .frame(
-                    width: markerSize * ChartConstants.LegendLayout.lineWidthMultiplier,
+                    width: markerSize * ChartDefaults.LegendLayout.lineWidthMultiplier,
                     height: max(
-                        ChartConstants.LegendLayout.minimumLineHeight,
-                        markerSize / ChartConstants.LegendLayout.lineHeightDivisor
+                        ChartDefaults.LegendLayout.minimumLineHeight,
+                        markerSize / ChartDefaults.LegendLayout.lineHeightDivisor
                     )
                 )
         }

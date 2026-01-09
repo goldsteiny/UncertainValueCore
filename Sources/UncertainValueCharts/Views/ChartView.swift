@@ -18,7 +18,7 @@ public struct ChartView: View {
 
     @State private var plotSize: CGSize = .zero
     @GestureState private var gestureTranslation: CGSize = .zero
-    @GestureState private var gestureMagnification: CGFloat = ChartConstants.Gestures.defaultMagnification
+    @GestureState private var gestureMagnification: CGFloat = ChartDefaults.Gestures.defaultMagnification
 
     public init(
         config: ChartConfiguration,
@@ -86,7 +86,7 @@ public struct ChartView: View {
                             .position(x: plotFrame.midX, y: plotFrame.midY)
                             .gesture(panAndZoomGesture)
                             .highPriorityGesture(
-                                TapGesture(count: ChartConstants.Gestures.doubleTapCount).onEnded {
+                                TapGesture(count: ChartDefaults.Gestures.doubleTapCount).onEnded {
                                     onDoubleTap?()
                                 }
                             )
@@ -134,7 +134,7 @@ public struct ChartView: View {
             guard let start = viewport else { return }
 
             let translation = value.first?.translation ?? .zero
-            let magnification = value.second ?? ChartConstants.Gestures.defaultMagnification
+            let magnification = value.second ?? ChartDefaults.Gestures.defaultMagnification
 
             let panned = ChartViewportGestures.panned(
                 from: start,

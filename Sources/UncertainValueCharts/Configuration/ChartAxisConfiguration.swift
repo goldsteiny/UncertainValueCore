@@ -17,7 +17,7 @@ public struct ChartAxisConfiguration: Sendable, Equatable {
     public init(
         label: String = "",
         domain: ClosedRange<Double>? = nil,
-        gridLineCount: Int = ChartAxisConfiguration.defaultGridLineCount
+        gridLineCount: Int = ChartDefaults.Axis.gridLineCount
     ) {
         self.label = label
         self.domain = domain
