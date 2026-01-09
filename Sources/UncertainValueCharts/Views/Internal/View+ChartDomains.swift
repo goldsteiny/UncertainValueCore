@@ -9,8 +9,8 @@ import SwiftUI
 
 extension View {
     @ViewBuilder
-    func applyChartDomains(xDomain: ClosedRange<Double>?, yDomain: ClosedRange<Double>?) -> some View {
-        switch (xDomain, yDomain) {
+    func applyChartDomains(xAxis: ChartAxisConfiguration, yAxis: ChartAxisConfiguration) -> some View {
+        switch (xAxis.domain, yAxis.domain) {
         case let (x?, y?):
             self.chartXScale(domain: x).chartYScale(domain: y)
         case let (x?, nil):

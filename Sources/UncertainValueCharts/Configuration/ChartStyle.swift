@@ -9,16 +9,6 @@ import CoreGraphics
 import Foundation
 
 public struct ChartStyle: Sendable, Equatable {
-    public struct GridLineCount: Sendable, Equatable {
-        public var horizontal: Int
-        public var vertical: Int
-
-        public init(horizontal: Int, vertical: Int) {
-            self.horizontal = horizontal
-            self.vertical = vertical
-        }
-    }
-
     public struct MarkStyle: Sendable, Equatable {
         public var pointSymbolSize: CGFloat?
         public var errorLineWidth: CGFloat
@@ -62,9 +52,8 @@ public struct ChartStyle: Sendable, Equatable {
 
     public struct ExportStyle: Sendable, Equatable {
         public var verticalSpacing: CGFloat
-        public var yAxisLabelFontSize: CGFloat
+        public var axisLabelFontSize: CGFloat
         public var axisValueFontSize: CGFloat
-        public var xAxisLabelFontSize: CGFloat
         public var gridLineWidth: CGFloat
         public var gridLineOpacity: Double
         public var legendMarkerSize: CGFloat
@@ -76,9 +65,8 @@ public struct ChartStyle: Sendable, Equatable {
 
         public init(
             verticalSpacing: CGFloat,
-            yAxisLabelFontSize: CGFloat,
+            axisLabelFontSize: CGFloat,
             axisValueFontSize: CGFloat,
-            xAxisLabelFontSize: CGFloat,
             gridLineWidth: CGFloat,
             gridLineOpacity: Double,
             legendMarkerSize: CGFloat,
@@ -89,9 +77,8 @@ public struct ChartStyle: Sendable, Equatable {
             chartPadding: CGFloat
         ) {
             self.verticalSpacing = verticalSpacing
-            self.yAxisLabelFontSize = yAxisLabelFontSize
+            self.axisLabelFontSize = axisLabelFontSize
             self.axisValueFontSize = axisValueFontSize
-            self.xAxisLabelFontSize = xAxisLabelFontSize
             self.gridLineWidth = gridLineWidth
             self.gridLineOpacity = gridLineOpacity
             self.legendMarkerSize = legendMarkerSize
@@ -103,7 +90,6 @@ public struct ChartStyle: Sendable, Equatable {
         }
     }
 
-    public var gridLineCount: GridLineCount
     public var domainPaddingFraction: Double
     public var minimumDomainSpan: Double
     public var markStyles: MarkStyles
@@ -112,7 +98,6 @@ public struct ChartStyle: Sendable, Equatable {
     public var interactiveVerticalSpacing: CGFloat
 
     public init(
-        gridLineCount: GridLineCount,
         domainPaddingFraction: Double,
         minimumDomainSpan: Double,
         markStyles: MarkStyles,
@@ -120,7 +105,6 @@ public struct ChartStyle: Sendable, Equatable {
         exportStyle: ExportStyle,
         interactiveVerticalSpacing: CGFloat
     ) {
-        self.gridLineCount = gridLineCount
         self.domainPaddingFraction = domainPaddingFraction
         self.minimumDomainSpan = minimumDomainSpan
         self.markStyles = markStyles
@@ -130,7 +114,6 @@ public struct ChartStyle: Sendable, Equatable {
     }
 
     public static let `default` = ChartStyle(
-        gridLineCount: GridLineCount(horizontal: 5, vertical: 5),
         domainPaddingFraction: 0.05,
         minimumDomainSpan: 1e-12,
         markStyles: MarkStyles(
@@ -154,9 +137,8 @@ public struct ChartStyle: Sendable, Equatable {
         ),
         exportStyle: ExportStyle(
             verticalSpacing: 24,
-            yAxisLabelFontSize: 28,
+            axisLabelFontSize: 26,
             axisValueFontSize: 22,
-            xAxisLabelFontSize: 26,
             gridLineWidth: 1,
             gridLineOpacity: 0.4,
             legendMarkerSize: 16,

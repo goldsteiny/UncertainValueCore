@@ -19,25 +19,25 @@ public struct ExportableChartView: View {
         let exportStyle = config.style.exportStyle
 
         VStack(alignment: .leading, spacing: exportStyle.verticalSpacing) {
-            if !config.yAxisLabel.isEmpty {
-                Text(config.yAxisLabel)
-                    .font(.system(size: exportStyle.yAxisLabelFontSize, weight: .medium))
+            if !config.yAxis.label.isEmpty {
+                Text(config.yAxis.label)
+                    .font(.system(size: exportStyle.axisLabelFontSize, weight: .medium))
                     .foregroundColor(.black)
             }
 
             Chart { chartMarks(config: config, style: config.style.markStyles.export) }
-                .applyChartDomains(xDomain: config.xDomain, yDomain: config.yDomain)
+                .applyChartDomains(xAxis: config.xAxis, yAxis: config.yAxis)
                 .chartPlotStyle { $0.clipped() }
                 .chartXAxis { exportXAxisMarks }
                 .chartYAxis { exportYAxisMarks }
                 .chartXAxisLabel {
-                    Text(config.xAxisLabel)
-                        .font(.system(size: exportStyle.xAxisLabelFontSize, weight: .medium))
+                    Text(config.xAxis.label)
+                        .font(.system(size: exportStyle.axisLabelFontSize, weight: .medium))
                         .foregroundColor(.black)
                 }
                 .chartLegend(.hidden)
 
-            if showLegend {
+            if config.shouldShowLegend {
                 ChartLegendView(
                     series: config.series,
                     overlays: config.overlays,
@@ -55,37 +55,20 @@ public struct ExportableChartView: View {
         .environment(\.colorScheme, .light)
     }
 
-    private var showLegend: Bool {
-        config.series.count > 1 || !config.overlays.isEmpty
-    }
-
     @AxisContentBuilder
     private var exportXAxisMarks: some AxisContent {
-        let exportStyle = config.style.exportStyle
-        AxisMarks(values: .automatic(desiredCount: config.style.gridLineCount.vertical)) { value in
-            AxisGridLine(stroke: StrokeStyle(lineWidth: exportStyle.gridLineWidth))
-                .foregroundStyle(Color.gray.opacity(exportStyle.gridLineOpacity))
-            AxisTick(stroke: StrokeStyle(lineWidth: exportStyle.gridLineWidth))
-            AxisValueLabel {
-                Text(AxisFormatting.formattedAxisValue(value) ?? "")
-                    .font(.system(size: exportStyle.axisValueFontSize))
-                    .foregroundColor(.black)
-            }
-        }
+        AxisMarksBuilder.export(
+            desiredCount: config.xAxis.gridLineCount,
+            style: config.style.exportStyle
+        )
     }
 
     @AxisContentBuilder
     private var exportYAxisMarks: some AxisContent {
-        let exportStyle = config.style.exportStyle
-        AxisMarks(position: .leading, values: .automatic(desiredCount: config.style.gridLineCount.horizontal)) { value in
-            AxisGridLine(stroke: StrokeStyle(lineWidth: exportStyle.gridLineWidth))
-                .foregroundStyle(Color.gray.opacity(exportStyle.gridLineOpacity))
-            AxisTick(stroke: StrokeStyle(lineWidth: exportStyle.gridLineWidth))
-            AxisValueLabel {
-                Text(AxisFormatting.formattedAxisValue(value) ?? "")
-                    .font(.system(size: exportStyle.axisValueFontSize))
-                    .foregroundColor(.black)
-            }
-        }
+        AxisMarksBuilder.export(
+            desiredCount: config.yAxis.gridLineCount,
+            position: .leading,
+            style: config.style.exportStyle
+        )
     }
 }

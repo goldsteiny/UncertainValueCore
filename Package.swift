@@ -74,6 +74,10 @@ let package = Package(
         .testTarget(
             name: "UncertainValueStatisticsTests",
             dependencies: ["UncertainValueStatistics"]
+        ),
+        .testTarget(
+            name: "BoundedValuesChartsTests",
+            dependencies: ["BoundedValuesCharts", "UncertainValueCoreAlgebra"]
         )
     ]
 )

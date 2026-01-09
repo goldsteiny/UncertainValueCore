@@ -34,8 +34,8 @@ public struct ChartView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: config.style.interactiveVerticalSpacing) {
-            if !config.yAxisLabel.isEmpty {
-                Text(config.yAxisLabel)
+            if !config.yAxis.label.isEmpty {
+                Text(config.yAxis.label)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -43,7 +43,7 @@ public struct ChartView: View {
             interactivePlot
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if showLegend {
+            if config.shouldShowLegend {
                 ChartLegendView(
                     series: config.series,
                     overlays: config.overlays,
@@ -55,39 +55,25 @@ public struct ChartView: View {
         }
     }
 
-    private var showLegend: Bool {
-        config.series.count > 1 || !config.overlays.isEmpty
-    }
-
     private var plotConfig: ChartConfiguration {
-        var updated = config
-        if let renderedViewport {
-            updated.xDomain = renderedViewport.xDomain
-            updated.yDomain = renderedViewport.yDomain
-        }
-        return updated
+        config.applying(viewport: renderedViewport)
     }
 
     private var interactivePlot: some View {
         Chart { chartMarks(config: plotConfig, style: config.style.markStyles.interactive) }
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: config.style.gridLineCount.vertical)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel { Text(AxisFormatting.formattedAxisValue(value) ?? "") }
-                }
+                AxisMarksBuilder.interactive(desiredCount: plotConfig.xAxis.gridLineCount)
             }
             .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: config.style.gridLineCount.horizontal)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel { Text(AxisFormatting.formattedAxisValue(value) ?? "") }
-                }
+                AxisMarksBuilder.interactive(
+                    desiredCount: plotConfig.yAxis.gridLineCount,
+                    position: .leading
+                )
             }
-            .chartXAxisLabel(config.xAxisLabel, position: .bottom, alignment: .center)
+            .chartXAxisLabel(plotConfig.xAxis.label, position: .bottom, alignment: .center)
             .chartLegend(.hidden)
             .chartPlotStyle { $0.clipped() }
-            .applyChartDomains(xDomain: plotConfig.xDomain, yDomain: plotConfig.yDomain)
+            .applyChartDomains(xAxis: plotConfig.xAxis, yAxis: plotConfig.yAxis)
             .chartOverlay { proxy in
                 GeometryReader { geo in
                     if let plotFrameAnchor = proxy.plotFrame {

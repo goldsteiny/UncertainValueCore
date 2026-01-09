@@ -10,27 +10,33 @@ import Foundation
 public struct ChartConfiguration: Sendable, Equatable {
     public var series: [ChartSeries]
     public var overlays: [ChartOverlayLine]
-    public var xAxisLabel: String
-    public var yAxisLabel: String
-    public var xDomain: ClosedRange<Double>?
-    public var yDomain: ClosedRange<Double>?
+    public var xAxis: ChartAxisConfiguration
+    public var yAxis: ChartAxisConfiguration
     public var style: ChartStyle
 
     public init(
         series: [ChartSeries],
         overlays: [ChartOverlayLine] = [],
-        xAxisLabel: String = "",
-        yAxisLabel: String = "",
-        xDomain: ClosedRange<Double>? = nil,
-        yDomain: ClosedRange<Double>? = nil,
+        xAxis: ChartAxisConfiguration = ChartAxisConfiguration(),
+        yAxis: ChartAxisConfiguration = ChartAxisConfiguration(),
         style: ChartStyle = .default
     ) {
         self.series = series
         self.overlays = overlays
-        self.xAxisLabel = xAxisLabel
-        self.yAxisLabel = yAxisLabel
-        self.xDomain = xDomain
-        self.yDomain = yDomain
+        self.xAxis = xAxis
+        self.yAxis = yAxis
         self.style = style
+    }
+
+    public var shouldShowLegend: Bool {
+        series.count > 1 || !overlays.isEmpty
+    }
+
+    public func applying(viewport: ChartViewport?) -> ChartConfiguration {
+        guard let viewport else { return self }
+        var updated = self
+        updated.xAxis = xAxis.withDomain(viewport.xDomain)
+        updated.yAxis = yAxis.withDomain(viewport.yDomain)
+        return updated
     }
 }

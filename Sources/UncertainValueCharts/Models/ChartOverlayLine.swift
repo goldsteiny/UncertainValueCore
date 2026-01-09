@@ -8,7 +8,7 @@
 import CoreGraphics
 import Foundation
 
-public struct ChartOverlaySegment: Identifiable, Equatable, Hashable {
+public struct ChartOverlaySegment: Identifiable, Equatable, Hashable, Sendable {
     public let id: UUID
     public let points: [CGPoint]
 
@@ -18,7 +18,7 @@ public struct ChartOverlaySegment: Identifiable, Equatable, Hashable {
     }
 }
 
-public struct ChartOverlayLine: Identifiable, Equatable, Hashable {
+public struct ChartOverlayLine: Identifiable, Equatable, Hashable, Sendable {
     public let id: UUID
     public let label: String
     public let color: ChartColor
