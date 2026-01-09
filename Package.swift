@@ -28,6 +28,10 @@ let package = Package(
         .library(
             name: "UncertainValueStatistics",
             targets: ["UncertainValueStatistics"]
+        ),
+        .library(
+            name: "BoundedValuesCharts",
+            targets: ["BoundedValuesCharts"]
         )
     ],
     targets: [
@@ -49,6 +53,11 @@ let package = Package(
         .target(
             name: "UncertainValueStatistics",
             dependencies: ["UncertainValueCore", "MultiplicativeUncertainValue"]
+        ),
+        .target(
+            name: "BoundedValuesCharts",
+            dependencies: ["UncertainValueCoreAlgebra"],
+            path: "Sources/UncertainValueCharts"
         ),
         .testTarget(
             name: "UncertainValueCoreTests",
