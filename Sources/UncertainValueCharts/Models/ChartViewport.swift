@@ -93,7 +93,7 @@ private struct ChartDataBounds {
 
 private extension Collection where Element == Double {
     var range: ClosedRange<Double>? {
-        guard let minValue = self.min(), let maxValue = self.max() else { return nil }
+        guard let minValue = self.min(), let maxValue = self.max(), minValue <= maxValue else { return nil }
         return minValue...maxValue
     }
 }

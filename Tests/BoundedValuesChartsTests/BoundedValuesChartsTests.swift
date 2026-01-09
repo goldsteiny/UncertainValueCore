@@ -1,7 +1,14 @@
 import CoreGraphics
+import Foundation
 import Testing
 @testable import BoundedValuesCharts
 import UncertainValueCoreAlgebra
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
+private let chartDefaultsLock = NSLock()
 
 private struct TestBoundedValue: BoundedValuesProviding {
     let value: Double
@@ -11,6 +18,18 @@ private struct TestBoundedValue: BoundedValuesProviding {
 
 private enum TestConstants {
     static let accuracy: Double = 1e-12
+}
+
+private enum ChartDefaultsTestValues {
+    static let customGridLineCount: Int = 7
+    static let customLegendThreshold: Int = 3
+    static let axisFormatterFractionDigits: Int = 1
+    static let axisFormatInput: Double = 1.234
+    static let axisFormatExpected: String = "1.2"
+    static let customMinimumSpan: Double = 0.123
+    static let rendererSize: CGSize = CGSize(width: 320, height: 240)
+    static let nonFiniteValue: Double = .infinity
+    static let nanValue: Double = .nan
 }
 
 struct ChartValueTests {
@@ -129,6 +148,151 @@ struct ChartViewportInteractionTests {
         #expect(zoomedNegative == start)
         #expect(zoomedInfinite == start)
     }
+}
+
+struct ChartViewportEdgeTests {
+    @Test func fitToDataReturnsNilForEmptySeries() {
+        let viewport = ChartViewport.fitToData(series: [])
+        #expect(viewport == nil)
+    }
+
+    @Test func fitToDataReturnsNilForNaNValues() {
+        let points = [ChartPoint(x: ChartValue(ChartDefaultsTestValues.nanValue), y: ChartValue(1.0))]
+        let series = ChartSeries(label: "Series", color: .green, points: points)
+
+        let viewport = ChartViewport.fitToData(series: [series])
+        #expect(viewport == nil)
+    }
+
+    @Test func fitToDataReturnsNilForInfiniteValues() {
+        let points = [ChartPoint(x: ChartValue(0.0), y: ChartValue(ChartDefaultsTestValues.nonFiniteValue))]
+        let series = ChartSeries(label: "Series", color: .orange, points: points)
+
+        let viewport = ChartViewport.fitToData(series: [series])
+        #expect(viewport == nil)
+    }
+}
+
+struct ChartDefaultsTests {
+    @Test func styleOverrideAppliesToConfiguration() throws {
+        var customStyle = ChartStyle.default
+        customStyle.minimumDomainSpan = ChartDefaultsTestValues.customMinimumSpan
+
+        try withChartDefaults(style: customStyle) {
+            let config = ChartConfiguration(series: [makeSeries(label: "Series")])
+            #expect(config.style == customStyle)
+        }
+    }
+
+    @Test func axisGridLineCountOverrideAppliesToAxisConfiguration() throws {
+        try withChartDefaults(gridLineCount: ChartDefaultsTestValues.customGridLineCount) {
+            let axis = ChartAxisConfiguration()
+            #expect(axis.gridLineCount == ChartDefaultsTestValues.customGridLineCount)
+        }
+    }
+
+    @Test func axisFormattingUsesCustomNumberFormatter() throws {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = ChartDefaultsTestValues.axisFormatterFractionDigits
+        formatter.minimumFractionDigits = 0
+        formatter.usesGroupingSeparator = false
+
+        try withChartDefaults(numberFormatter: formatter) {
+            let formatted = AxisFormatting.formattedAxisValue(ChartDefaultsTestValues.axisFormatInput)
+            #expect(formatted == ChartDefaultsTestValues.axisFormatExpected)
+        }
+    }
+
+    @Test func legendVisibilityRespectsDefaultThreshold() throws {
+        try withChartDefaults {
+            let seriesA = makeSeries(label: "A")
+            let seriesB = makeSeries(label: "B")
+
+            let singleSeries = ChartConfiguration(series: [seriesA])
+            #expect(singleSeries.shouldShowLegend == false)
+
+            let twoSeries = ChartConfiguration(series: [seriesA, seriesB])
+            #expect(twoSeries.shouldShowLegend)
+
+            let overlay = ChartOverlayLine(label: "Line", color: .orange, segments: [])
+            let overlayConfig = ChartConfiguration(series: [seriesA], overlays: [overlay])
+            #expect(overlayConfig.shouldShowLegend)
+        }
+    }
+
+    @Test func legendVisibilityRespectsCustomThreshold() throws {
+        let seriesA = makeSeries(label: "A")
+        let seriesB = makeSeries(label: "B")
+        let seriesC = makeSeries(label: "C")
+
+        try withChartDefaults(minimumSeriesCountForLegend: ChartDefaultsTestValues.customLegendThreshold) {
+            let twoSeries = ChartConfiguration(series: [seriesA, seriesB])
+            #expect(twoSeries.shouldShowLegend == false)
+
+            let threeSeries = ChartConfiguration(series: [seriesA, seriesB, seriesC])
+            #expect(threeSeries.shouldShowLegend)
+        }
+    }
+}
+
+#if canImport(UIKit)
+struct ChartImageRendererTests {
+    @MainActor
+    @Test func renderProducesImage() {
+        let series = makeSeries(label: "Series")
+        let config = ChartConfiguration(series: [series])
+
+        let image = ChartImageRenderer.render(config, size: ChartDefaultsTestValues.rendererSize)
+        #expect(image != nil)
+    }
+}
+#endif
+
+private func withChartDefaults<T>(
+    style: ChartStyle? = nil,
+    gridLineCount: Int? = nil,
+    numberFormatter: NumberFormatter? = nil,
+    minimumSeriesCountForLegend: Int? = nil,
+    _ body: () throws -> T
+) rethrows -> T {
+    chartDefaultsLock.lock()
+    let previousStyle = ChartDefaults.style
+    let previousGridLineCount = ChartDefaults.Axis.gridLineCount
+    let previousNumberFormatter = ChartDefaults.AxisFormatting.numberFormatter
+    let previousMinimumSeriesCountForLegend = ChartDefaults.LegendLayout.minimumSeriesCountForLegend
+
+    if let style {
+        ChartDefaults.style = style
+    }
+    if let gridLineCount {
+        ChartDefaults.Axis.gridLineCount = gridLineCount
+    }
+    if let numberFormatter {
+        ChartDefaults.AxisFormatting.numberFormatter = numberFormatter
+    }
+    if let minimumSeriesCountForLegend {
+        ChartDefaults.LegendLayout.minimumSeriesCountForLegend = minimumSeriesCountForLegend
+    }
+
+    defer {
+        ChartDefaults.style = previousStyle
+        ChartDefaults.Axis.gridLineCount = previousGridLineCount
+        ChartDefaults.AxisFormatting.numberFormatter = previousNumberFormatter
+        ChartDefaults.LegendLayout.minimumSeriesCountForLegend = previousMinimumSeriesCountForLegend
+        chartDefaultsLock.unlock()
+    }
+
+    return try body()
+}
+
+private func makeSeries(
+    label: String,
+    color: ChartColor = .blue,
+    points: [ChartPoint] = [ChartPoint(x: ChartValue(0.0), y: ChartValue(0.0))]
+) -> ChartSeries {
+    ChartSeries(label: label, color: color, points: points)
 }
 
 private func expectedDomain(min: Double, max: Double, style: ChartStyle) -> ClosedRange<Double> {
