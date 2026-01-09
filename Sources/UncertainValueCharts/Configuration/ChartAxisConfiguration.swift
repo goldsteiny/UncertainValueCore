@@ -8,7 +8,7 @@
 import Foundation
 
 public struct ChartAxisConfiguration: Sendable, Equatable {
-    public static let defaultGridLineCount: Int = 5
+    public static let defaultGridLineCount: Int = ChartConstants.Axis.defaultGridLineCount
 
     public var label: String
     public var domain: ClosedRange<Double>?

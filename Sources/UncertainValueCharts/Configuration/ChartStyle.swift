@@ -114,40 +114,40 @@ public struct ChartStyle: Sendable, Equatable {
     }
 
     public static let `default` = ChartStyle(
-        domainPaddingFraction: 0.05,
-        minimumDomainSpan: 1e-12,
+        domainPaddingFraction: ChartConstants.StyleDefaults.domainPaddingFraction,
+        minimumDomainSpan: ChartConstants.StyleDefaults.minimumDomainSpan,
         markStyles: MarkStyles(
             interactive: MarkStyle(
-                pointSymbolSize: nil,
-                errorLineWidth: 1.5,
-                errorOpacity: 0.7,
-                overlayLineWidth: 2
+                pointSymbolSize: ChartConstants.StyleDefaults.Mark.interactivePointSymbolSize,
+                errorLineWidth: ChartConstants.StyleDefaults.Mark.interactiveErrorLineWidth,
+                errorOpacity: ChartConstants.StyleDefaults.Mark.interactiveErrorOpacity,
+                overlayLineWidth: ChartConstants.StyleDefaults.Mark.interactiveOverlayLineWidth
             ),
             export: MarkStyle(
-                pointSymbolSize: 150,
-                errorLineWidth: 2.5,
-                errorOpacity: 0.8,
-                overlayLineWidth: 3
+                pointSymbolSize: ChartConstants.StyleDefaults.Mark.exportPointSymbolSize,
+                errorLineWidth: ChartConstants.StyleDefaults.Mark.exportErrorLineWidth,
+                errorOpacity: ChartConstants.StyleDefaults.Mark.exportErrorOpacity,
+                overlayLineWidth: ChartConstants.StyleDefaults.Mark.exportOverlayLineWidth
             )
         ),
         legendStyle: LegendStyle(
-            markerSize: 8,
-            rowSpacing: 16,
-            itemSpacing: 4
+            markerSize: ChartConstants.StyleDefaults.Legend.markerSize,
+            rowSpacing: ChartConstants.StyleDefaults.Legend.rowSpacing,
+            itemSpacing: ChartConstants.StyleDefaults.Legend.itemSpacing
         ),
         exportStyle: ExportStyle(
-            verticalSpacing: 24,
-            axisLabelFontSize: 26,
-            axisValueFontSize: 22,
-            gridLineWidth: 1,
-            gridLineOpacity: 0.4,
-            legendMarkerSize: 16,
-            legendFontSize: 24,
-            legendRowSpacing: 32,
-            legendItemSpacing: 10,
-            legendTopPadding: 8,
-            chartPadding: 60
+            verticalSpacing: ChartConstants.StyleDefaults.Export.verticalSpacing,
+            axisLabelFontSize: ChartConstants.StyleDefaults.Export.axisLabelFontSize,
+            axisValueFontSize: ChartConstants.StyleDefaults.Export.axisValueFontSize,
+            gridLineWidth: ChartConstants.StyleDefaults.Export.gridLineWidth,
+            gridLineOpacity: ChartConstants.StyleDefaults.Export.gridLineOpacity,
+            legendMarkerSize: ChartConstants.StyleDefaults.Export.legendMarkerSize,
+            legendFontSize: ChartConstants.StyleDefaults.Export.legendFontSize,
+            legendRowSpacing: ChartConstants.StyleDefaults.Export.legendRowSpacing,
+            legendItemSpacing: ChartConstants.StyleDefaults.Export.legendItemSpacing,
+            legendTopPadding: ChartConstants.StyleDefaults.Export.legendTopPadding,
+            chartPadding: ChartConstants.StyleDefaults.Export.chartPadding
         ),
-        interactiveVerticalSpacing: 12
+        interactiveVerticalSpacing: ChartConstants.StyleDefaults.interactiveVerticalSpacing
     )
 }

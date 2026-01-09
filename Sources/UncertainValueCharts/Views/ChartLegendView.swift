@@ -64,17 +64,14 @@ public struct ChartLegendView: View {
             Capsule()
                 .fill(item.color)
                 .frame(
-                    width: markerSize * LegendConstants.lineWidthMultiplier,
-                    height: max(LegendConstants.minimumLineHeight, markerSize / LegendConstants.lineHeightDivisor)
+                    width: markerSize * ChartConstants.LegendLayout.lineWidthMultiplier,
+                    height: max(
+                        ChartConstants.LegendLayout.minimumLineHeight,
+                        markerSize / ChartConstants.LegendLayout.lineHeightDivisor
+                    )
                 )
         }
     }
-}
-
-private enum LegendConstants {
-    static let lineWidthMultiplier: CGFloat = 2
-    static let minimumLineHeight: CGFloat = 2
-    static let lineHeightDivisor: CGFloat = 3
 }
 
 private struct LegendItem: Identifiable, Equatable {

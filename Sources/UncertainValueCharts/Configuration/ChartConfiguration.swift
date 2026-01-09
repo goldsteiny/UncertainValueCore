@@ -29,7 +29,7 @@ public struct ChartConfiguration: Sendable, Equatable {
     }
 
     public var shouldShowLegend: Bool {
-        series.count > 1 || !overlays.isEmpty
+        series.count >= ChartConstants.LegendLayout.minimumSeriesCountForLegend || !overlays.isEmpty
     }
 
     public func applying(viewport: ChartViewport?) -> ChartConfiguration {

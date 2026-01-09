@@ -16,7 +16,7 @@ public struct ChartImageRenderer {
             .frame(width: size.width, height: size.height)
 
         let renderer = ImageRenderer(content: exportView)
-        renderer.scale = 1.0
+        renderer.scale = ChartConstants.Export.imageScale
 
         return renderer.uiImage
     }

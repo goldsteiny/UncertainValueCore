@@ -11,11 +11,11 @@ import Foundation
 enum AxisFormatting {
     static let axisNumberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.locale = Locale(identifier: ChartConstants.AxisFormatting.localeIdentifier)
         formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 6
-        formatter.minimumFractionDigits = 0
-        formatter.usesGroupingSeparator = false
+        formatter.maximumFractionDigits = ChartConstants.AxisFormatting.maximumFractionDigits
+        formatter.minimumFractionDigits = ChartConstants.AxisFormatting.minimumFractionDigits
+        formatter.usesGroupingSeparator = ChartConstants.AxisFormatting.usesGroupingSeparator
         return formatter
     }()
 
