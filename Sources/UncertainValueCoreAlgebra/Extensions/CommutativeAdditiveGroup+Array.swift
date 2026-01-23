@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Array where Element: CommutativeAdditiveGroup {
+public extension Array where Element: SummableGroup {
     /// Sums all elements using the specified norm strategy.
     @inlinable
     func sum(using strategy: Element.Norm) -> Element {

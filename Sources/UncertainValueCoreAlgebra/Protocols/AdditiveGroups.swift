@@ -20,6 +20,10 @@ public extension AdditiveGroup {
     func subtracting(_ other: Self, using strategy: Norm) -> Self {
         adding(other.negative, using: strategy)
     }
+    
+    prefix static func - (lhs: Self) -> Self {
+        lhs.negative
+    }
 }
 
 public extension AdditiveGroup where Self: Scalable {
@@ -38,15 +42,19 @@ public extension AdditiveGroup where Self: SignumProvidingBase {
     }
 }
 
-/// Commutative additive group with a list-based sum primitive.
-public protocol CommutativeAdditiveGroup: AdditiveGroup {
+/// Group that comes with computationally better sum function.
+public protocol SummableGroup: AdditiveGroup {
     static func sum(_ values: [Self], using strategy: Norm) -> Self
 }
 
-public extension CommutativeAdditiveGroup {
+public extension SummableGroup {
     /// Default binary addition delegates to the list-based primitive.
     @inlinable
     func adding(_ other: Self, using strategy: Norm) -> Self {
         Self.sum([self, other], using: strategy)
     }
 }
+
+
+/// Commutative additive group with a list-based sum primitive.
+public protocol CommutativeAdditiveGroup: SummableGroup {}
