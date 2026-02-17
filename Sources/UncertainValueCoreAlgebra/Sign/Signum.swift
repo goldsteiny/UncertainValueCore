@@ -2,10 +2,9 @@
 //  Signum.swift
 //  UncertainValueCoreAlgebra
 //
-//  Sign helpers for value types.
+//  Sign and absolute-value decomposition primitives.
 //
 
-/// A three-valued sign representation.
 public enum Signum: Int, Sendable, Codable, CaseIterable {
     case negative = -1
     case zero = 0
@@ -13,22 +12,30 @@ public enum Signum: Int, Sendable, Codable, CaseIterable {
 }
 
 public extension Signum {
+    @inlinable
     var flipped: Signum {
-        Signum(rawValue: -rawValue)!
+        switch self {
+        case .negative: return .positive
+        case .zero: return .zero
+        case .positive: return .negative
+        }
     }
 }
 
-/// Signed type with negation. `flippedSign` is the primitive; `prefix -` is derived.
+/// Signed element primitive.
 public protocol Signed: Sendable {
     var signum: Signum { get }
     var flippedSign: Self { get }
 }
 
 public extension Signed {
-    prefix static func - (operand: Self) -> Self { operand.flippedSign }
+    @inlinable
+    prefix static func - (operand: Self) -> Self {
+        operand.flippedSign
+    }
 }
 
-/// Signed type with absolute value decomposition: x = signum × |x|.
+/// x decomposed into sign and absolute value.
 public protocol AbsoluteValueDecomposable: Signed {
     var absolute: Self { get }
 }

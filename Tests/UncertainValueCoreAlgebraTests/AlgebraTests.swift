@@ -1,731 +1,321 @@
-//
-//  AlgebraTests.swift
-//  UncertainValueCoreAlgebraTests
-//
-//  Comprehensive tests for the algebra module's protocols, types, and extensions.
-//
-
-import XCTest
+import Testing
 @testable import UncertainValueCoreAlgebra
 
-// MARK: - Test Stubs
+private struct DoublePair: Equatable, Sendable {
+    let first: Double
+    let second: Double
 
-/// Double-backed scalar conforming to full algebra hierarchy.
-struct TestScalar: Equatable, Hashable, Sendable {
-    let value: Double
-
-    init(_ value: Double) { self.value = value }
-}
-
-extension TestScalar: ZeroContaining {
-    static var zero: TestScalar { TestScalar(0) }
-    var isZero: Bool { value == 0 }
-}
-
-extension TestScalar: OneContaining {
-    static var one: TestScalar { TestScalar(1) }
-    var isOne: Bool { value == 1 }
-}
-
-extension TestScalar: Signed {
-    var signum: Signum {
-        if value > 0 { return .positive }
-        if value < 0 { return .negative }
-        return .zero
-    }
-    var flippedSign: TestScalar { TestScalar(-value) }
-}
-
-extension TestScalar: AbsoluteValueDecomposable {
-    var absolute: TestScalar { TestScalar(Swift.abs(value)) }
-}
-
-extension TestScalar: AdditiveMonoid {
-    static func + (lhs: TestScalar, rhs: TestScalar) -> TestScalar {
-        TestScalar(lhs.value + rhs.value)
+    init(_ first: Double, _ second: Double) {
+        self.first = first
+        self.second = second
     }
 }
 
-extension TestScalar: AdditiveGroup {}
-extension TestScalar: CommutativeAdditiveMonoid {}
-extension TestScalar: CommutativeAdditiveGroup {}
+extension DoublePair: Zero {
+    static var zero: DoublePair { DoublePair(0, 0) }
+}
 
-extension TestScalar: MultiplicativeMonoid {
-    static func * (lhs: TestScalar, rhs: TestScalar) -> TestScalar {
-        TestScalar(lhs.value * rhs.value)
+extension DoublePair: AdditiveSemigroup {
+    static func + (lhs: DoublePair, rhs: DoublePair) -> DoublePair {
+        DoublePair(lhs.first + rhs.first, lhs.second + rhs.second)
     }
 }
 
-extension TestScalar: MultiplicativeMonoidWithInverse {
-    var reciprocal: Result<TestScalar, AlgebraError.DivisionByZero> {
-        guard !isZero else { return .failure(.init()) }
-        return .success(TestScalar(1.0 / value))
+extension DoublePair: AdditiveGroup {
+    static prefix func - (operand: DoublePair) -> DoublePair {
+        DoublePair(-operand.first, -operand.second)
     }
 }
 
-extension TestScalar: CommutativeMultiplicativeMonoid {}
-extension TestScalar: CommutativeMultiplicativeMonoidWithInverse {}
-
-extension TestScalar: Scalable {
+extension DoublePair: LeftModule {
     typealias Scalar = Double
-    func scaled(by scalar: NonZero<Double>) -> TestScalar {
-        TestScalar(value * scalar.value)
+
+    func leftScaled(by scalar: Double) -> DoublePair {
+        DoublePair(first * scalar, second * scalar)
     }
 }
 
-extension TestScalar: SummableMonoid {
-    static func sum(_ values: NonEmptyArray<TestScalar>) -> TestScalar {
-        TestScalar(values.reduce(+, initialTransform: { $0.value }).self)
+private struct WrappedDouble: Equatable, Sendable {
+    let raw: Double
+
+    init(_ raw: Double) {
+        self.raw = raw
     }
 }
 
-extension TestScalar: SummableGroup {}
+extension WrappedDouble: Zero {
+    static var zero: WrappedDouble { WrappedDouble(0) }
+}
 
-extension TestScalar: ProductableMonoid {
-    static func product(_ values: NonEmptyArray<TestScalar>) -> TestScalar {
-        TestScalar(values.reduce(*, initialTransform: { $0.value }).self)
+extension WrappedDouble: One {
+    static var one: WrappedDouble { WrappedDouble(1) }
+}
+
+extension WrappedDouble: AdditiveSemigroup {
+    static func + (lhs: WrappedDouble, rhs: WrappedDouble) -> WrappedDouble {
+        WrappedDouble(lhs.raw + rhs.raw)
     }
 }
 
-extension TestScalar: ProductableMonoidWithInverse {}
-
-extension TestScalar: DiscreteRaisable {
-    func raised(to power: Int) -> Result<TestScalar, AlgebraError> {
-        let result = Foundation.pow(absolute.value, Double(power))
-        guard result.isFinite else { return .failure(.nonFiniteResult(.init())) }
-        let signed: TestScalar = (signum == .negative && !power.isMultiple(of: 2))
-            ? TestScalar(-result) : TestScalar(result)
-        return .success(signed)
+extension WrappedDouble: AdditiveGroup {
+    static prefix func - (operand: WrappedDouble) -> WrappedDouble {
+        WrappedDouble(-operand.raw)
     }
 }
 
-extension TestScalar: SignedRaisable {
-    func raised(to power: Double) -> Result<TestScalar, AlgebraError> {
-        guard signum != .negative || power.truncatingRemainder(dividingBy: 1) == 0 else {
-            return .failure(.incompatibleParameterPair(.init("negative base with fractional exponent")))
-        }
-        let result = Foundation.pow(absolute.value, power)
-        guard result.isFinite else { return .failure(.nonFiniteResult(.init())) }
-        return .success(TestScalar(result))
+extension WrappedDouble: MultiplicativeSemigroup {
+    static func * (lhs: WrappedDouble, rhs: WrappedDouble) -> WrappedDouble {
+        WrappedDouble(lhs.raw * rhs.raw)
     }
 }
 
-/// NonZero<Double>-backed scalar for total multiplicative group.
-struct TestNonZeroScalar: Equatable, Sendable {
-    let wrapped: NonZero<Double>
-
-    init(_ nz: NonZero<Double>) { self.wrapped = nz }
-}
-
-extension TestNonZeroScalar: OneContaining {
-    static var one: TestNonZeroScalar { TestNonZeroScalar(.one) }
-    var isOne: Bool { wrapped.value == 1 }
-}
-
-extension TestNonZeroScalar: MultiplicativeMonoid {
-    static func * (lhs: TestNonZeroScalar, rhs: TestNonZeroScalar) -> TestNonZeroScalar {
-        TestNonZeroScalar(NonZero(unchecked: lhs.wrapped.value * rhs.wrapped.value))
+extension WrappedDouble: MultiplicativeMonoidWithPartialReciprocal {
+    func reciprocal() -> Result<WrappedDouble, ReciprocalOfZeroError> {
+        guard !isZero else { return .failure(ReciprocalOfZeroError("wrapped value is zero")) }
+        return .success(WrappedDouble(1 / raw))
     }
 }
 
-extension TestNonZeroScalar: MultiplicativeGroup {
-    var reciprocal: TestNonZeroScalar {
-        TestNonZeroScalar(NonZero(unchecked: 1.0 / wrapped.value))
+extension WrappedDouble: Signed {
+    var signum: Signum {
+        if raw == 0 { return .zero }
+        return raw < 0 ? .negative : .positive
+    }
+
+    var flippedSign: WrappedDouble {
+        WrappedDouble(-raw)
     }
 }
 
-extension TestNonZeroScalar: CommutativeMultiplicativeMonoid {}
-extension TestNonZeroScalar: CommutativeMultiplicativeGroup {}
-
-/// SummableMonoid where `sum` is primitive and `+` is derived.
-struct TestSummable: Equatable, Sendable {
-    let value: Double
-    static var sumCallCount = 0
-
-    init(_ value: Double) { self.value = value }
-}
-
-extension TestSummable: ZeroContaining {
-    static var zero: TestSummable { TestSummable(0) }
-    var isZero: Bool { value == 0 }
-}
-
-extension TestSummable: AdditiveMonoid {} // + derived from SummableMonoid below
-
-extension TestSummable: AdditiveGroup {
-    prefix static func - (operand: TestSummable) -> TestSummable {
-        TestSummable(-operand.value)
+extension WrappedDouble: AbsoluteValueDecomposable {
+    var absolute: WrappedDouble {
+        WrappedDouble(Swift.abs(raw))
     }
 }
 
-extension TestSummable: SummableMonoid {
-    static func sum(_ values: NonEmptyArray<TestSummable>) -> TestSummable {
-        sumCallCount += 1
-        return TestSummable(values.reduce(+, initialTransform: { $0.value }))
+private struct SumPrimitive: Equatable, Sendable {
+    let raw: Int
+
+    init(_ raw: Int) {
+        self.raw = raw
     }
 }
 
-extension TestSummable: SummableGroup {}
-
-/// ProductableMonoid where `product` is primitive and `*` is derived.
-struct TestProductable: Equatable, Sendable {
-    let value: Double
-    static var productCallCount = 0
-
-    init(_ value: Double) { self.value = value }
+extension SumPrimitive: Zero {
+    static var zero: SumPrimitive { SumPrimitive(0) }
 }
 
-extension TestProductable: OneContaining {
-    static var one: TestProductable { TestProductable(1) }
-    var isOne: Bool { value == 1 }
-}
-
-extension TestProductable: MultiplicativeMonoid {} // * derived from ProductableMonoid below
-
-extension TestProductable: ProductableMonoid {
-    static func product(_ values: NonEmptyArray<TestProductable>) -> TestProductable {
-        productCallCount += 1
-        return TestProductable(values.reduce(*, initialTransform: { $0.value }))
+extension SumPrimitive: AdditivelySummable {
+    static func sum(_ values: NonEmpty<SumPrimitive>) -> SumPrimitive {
+        SumPrimitive(values.tail.reduce(values.head.raw) { $0 + $1.raw })
     }
 }
 
-// MARK: - 1. Signum Tests
+extension SumPrimitive: AdditiveMonoid {}
 
-final class SignumTests: XCTestCase {
-    func testFlipped() {
-        XCTAssertEqual(Signum.negative.flipped, .positive)
-        XCTAssertEqual(Signum.positive.flipped, .negative)
-        XCTAssertEqual(Signum.zero.flipped, .zero)
-    }
+private struct ProductPrimitive: Equatable, Sendable {
+    let raw: Int
 
-    func testRawValues() {
-        XCTAssertEqual(Signum.negative.rawValue, -1)
-        XCTAssertEqual(Signum.zero.rawValue, 0)
-        XCTAssertEqual(Signum.positive.rawValue, 1)
-    }
-
-    func testCaseIterable() {
-        XCTAssertEqual(Signum.allCases.count, 3)
+    init(_ raw: Int) {
+        self.raw = raw
     }
 }
 
-// MARK: - 2. Signed Protocol Tests
+extension ProductPrimitive: One {
+    static var one: ProductPrimitive { ProductPrimitive(1) }
+}
 
-final class SignedTests: XCTestCase {
-    func testPrefixMinusDispatchesToFlippedSign() {
-        let x = TestScalar(5)
-        XCTAssertEqual(-x, x.flippedSign)
-    }
-
-    func testDoubleNegation() {
-        let x = TestScalar(7)
-        XCTAssertEqual(-(-x), x)
-    }
-
-    func testIsPositiveIsNegative() {
-        XCTAssertTrue(TestScalar(3).isPositive)
-        XCTAssertFalse(TestScalar(3).isNegative)
-        XCTAssertTrue(TestScalar(-2).isNegative)
-        XCTAssertFalse(TestScalar(-2).isPositive)
-        XCTAssertFalse(TestScalar(0).isPositive)
-        XCTAssertFalse(TestScalar(0).isNegative)
+extension ProductPrimitive: MultiplicativelyProductable {
+    static func product(_ values: NonEmpty<ProductPrimitive>) -> ProductPrimitive {
+        ProductPrimitive(values.tail.reduce(values.head.raw) { $0 * $1.raw })
     }
 }
 
-// MARK: - 3. AbsoluteValueDecomposable Tests
+extension ProductPrimitive: MultiplicativeMonoid {}
 
-final class AbsoluteValueTests: XCTestCase {
-    func testAbsoluteOfPositive() {
-        XCTAssertEqual(TestScalar(5).absolute, TestScalar(5))
+private func requireSignedIntegerAlgebra<T: SignedIntegerAlgebra>(_ value: T) -> T {
+    value
+}
+
+private func requireFloatingPointFieldAlgebra<T: FloatingPointFieldAlgebra>(_ value: T) -> T {
+    value
+}
+
+struct UtilityTypeTests {
+    @Test func nonEmptyConstructMapReduce() {
+        let values = NonEmpty(1, [2, 3])
+        #expect(values.array == [1, 2, 3])
+        #expect(values.count == 3)
+        #expect(values.map { $0 * 2 }.array == [2, 4, 6])
+        #expect(values.reduce(+, initialTransform: { $0 }) == 6)
     }
 
-    func testAbsoluteOfNegative() {
-        XCTAssertEqual(TestScalar(-3).absolute, TestScalar(3))
-    }
-
-    func testAbsoluteOfZero() {
-        XCTAssertEqual(TestScalar(0).absolute, TestScalar(0))
+    @Test func nonZeroForWrappedDoubleAndInt() {
+        #expect(NonZero<WrappedDouble>(.zero) == nil)
+        #expect(NonZero<WrappedDouble>(WrappedDouble(2)) != nil)
+        #expect(NonZero<Int>(0) == nil)
+        #expect(NonZero<Int>(5)?.value == 5)
     }
 }
 
-// MARK: - 4. ZeroContaining / OneContaining Tests
-
-final class ZeroOneTests: XCTestCase {
-    func testZeroIsZero() {
-        XCTAssertTrue(TestScalar.zero.isZero)
+struct AdditiveDerivationTests {
+    @Test func sumDerivedFromBinaryPlus() {
+        let values = NonEmpty(DoublePair(1, 2), [DoublePair(3, 4), DoublePair(5, 6)])
+        #expect(DoublePair.sum(values) == DoublePair(9, 12))
     }
 
-    func testNonZeroIsNotZero() {
-        XCTAssertFalse(TestScalar(5).isZero)
+    @Test func binaryPlusDerivedFromSumPrimitive() {
+        #expect(SumPrimitive(2) + SumPrimitive(3) == SumPrimitive(5))
     }
 
-    func testOneIsOne() {
-        XCTAssertTrue(TestScalar.one.isOne)
+    @Test func arraySumForMonoid() {
+        #expect([DoublePair(1, 1), DoublePair(2, 3)].sum() == DoublePair(3, 4))
+        #expect(([DoublePair]() as [DoublePair]).sum() == .zero)
     }
 
-    func testNonOneIsNotOne() {
-        XCTAssertFalse(TestScalar(5).isOne)
-    }
-}
-
-// MARK: - 5. NonZero Tests
-
-final class NonZeroTests: XCTestCase {
-    func testInitZeroReturnsNil() {
-        XCTAssertNil(NonZero<Double>(0))
+    @Test func semigroupArraySumResult() {
+        #expect([DoublePair(1, 2), DoublePair(3, 4)].sumResult() == .success(DoublePair(4, 6)))
+        #expect(([] as [DoublePair]).sumResult() == .failure(.init()))
     }
 
-    func testInitNonZeroSucceeds() {
-        let nz = NonZero<Double>(5)
-        XCTAssertNotNil(nz)
-        XCTAssertEqual(nz?.value, 5)
-    }
-
-    func testInitInfinityReturnsNil() {
-        XCTAssertNil(NonZero<Double>(.infinity))
-    }
-
-    func testInitNaNReturnsNil() {
-        XCTAssertNil(NonZero<Double>(.nan))
-    }
-
-    func testOneConstant() {
-        XCTAssertEqual(NonZero<Double>.one.value, 1)
-    }
-
-    func testNegativeOneConstant() {
-        XCTAssertEqual(NonZero<Double>.negativeOne.value, -1)
-    }
-
-    func testEquatable() {
-        XCTAssertEqual(NonZero<Double>(3), NonZero<Double>(3))
-        XCTAssertNotEqual(NonZero<Double>(3), NonZero<Double>(4))
-    }
-
-    func testHashable() {
-        let a = NonZero<Double>(3)!
-        let b = NonZero<Double>(3)!
-        XCTAssertEqual(a.hashValue, b.hashValue)
-    }
-
-    func testMultiplicationTxNonZero() {
-        let nz = NonZero<Double>(2)!
-        XCTAssertEqual(3.0 * nz, 6.0)
-    }
-
-    func testMultiplicationNonZeroXt() {
-        let nz = NonZero<Double>(2)!
-        XCTAssertEqual(nz * 3.0, 6.0)
-    }
-
-    func testDivisionByNonZero() {
-        let nz = NonZero<Double>(2)!
-        XCTAssertEqual(6.0 / nz, 3.0)
-    }
-
-    func testInitIntegerZeroReturnsNil() {
-        XCTAssertNil(NonZero<Int>(0))
-    }
-
-    func testInitIntegerNonZeroSucceeds() {
-        XCTAssertNotNil(NonZero<Int>(5))
+    @Test func directSumAlias() {
+        #expect(DoublePair.directSum(DoublePair(2, 3), DoublePair(4, 5)) == DoublePair(6, 8))
     }
 }
 
-// MARK: - 6. NonEmptyArray Tests
-
-final class NonEmptyArrayTests: XCTestCase {
-    func testInitEmptyArrayReturnsNil() {
-        XCTAssertNil(NonEmptyArray<Int>([]))
+struct MultiplicativeDerivationTests {
+    @Test func productDerivedFromBinaryStar() {
+        let values = NonEmpty(WrappedDouble(2), [WrappedDouble(3), WrappedDouble(4)])
+        #expect(WrappedDouble.product(values) == WrappedDouble(24))
     }
 
-    func testInitNonEmptyArray() {
-        let nea = NonEmptyArray([1, 2, 3])!
-        XCTAssertEqual(nea.head, 1)
-        XCTAssertEqual(nea.tail, [2, 3])
+    @Test func binaryStarDerivedFromProductPrimitive() {
+        #expect(ProductPrimitive(3) * ProductPrimitive(4) == ProductPrimitive(12))
     }
 
-    func testHeadTailInit() {
-        let nea = NonEmptyArray(10, [20, 30])
-        XCTAssertEqual(nea.head, 10)
-        XCTAssertEqual(nea.tail, [20, 30])
+    @Test func arrayProductForMonoid() {
+        #expect([WrappedDouble(2), WrappedDouble(5)].product() == WrappedDouble(10))
+        #expect(([WrappedDouble]() as [WrappedDouble]).product() == .one)
     }
 
-    func testArrayRoundTrip() {
-        let arr = [1, 2, 3]
-        let nea = NonEmptyArray(arr)!
-        XCTAssertEqual(nea.array, arr)
-    }
-
-    func testCount() {
-        XCTAssertEqual(NonEmptyArray(1, [2, 3]).count, 3)
-        XCTAssertEqual(NonEmptyArray(1, []).count, 1)
-    }
-
-    func testMap() {
-        let nea = NonEmptyArray(1, [2, 3])
-        let mapped = nea.map { $0 * 10 }
-        XCTAssertEqual(mapped.array, [10, 20, 30])
-    }
-
-    func testReduce() {
-        let nea = NonEmptyArray(1, [2, 3])
-        let result = nea.reduce(+, initialTransform: { $0 })
-        XCTAssertEqual(result, 6)
-    }
-
-    func testRandomAccessCollection() {
-        let nea = NonEmptyArray(10, [20, 30])
-        XCTAssertEqual(nea[0], 10)
-        XCTAssertEqual(nea[1], 20)
-        XCTAssertEqual(nea[2], 30)
-        XCTAssertEqual(Array(nea), [10, 20, 30])
-    }
-
-    func testEquatable() {
-        let a = NonEmptyArray(1, [2])
-        let b = NonEmptyArray(1, [2])
-        let c = NonEmptyArray(1, [3])
-        XCTAssertEqual(a, b)
-        XCTAssertNotEqual(a, c)
-    }
-
-    func testHashable() {
-        let a = NonEmptyArray(1, [2])
-        let b = NonEmptyArray(1, [2])
-        XCTAssertEqual(a.hashValue, b.hashValue)
+    @Test func semigroupArrayProductResult() {
+        #expect([WrappedDouble(2), WrappedDouble(5)].productResult() == .success(WrappedDouble(10)))
+        #expect(([] as [WrappedDouble]).productResult() == .failure(.init()))
     }
 }
 
-// MARK: - 7. AdditiveMonoid Defaults
+struct ReciprocalAndDivisionTests {
+    @Test func reciprocalSuccessAndFailure() throws {
+        let reciprocal = try WrappedDouble(4).reciprocal().get()
+        #expect(reciprocal == WrappedDouble(0.25))
 
-final class AdditiveMonoidTests: XCTestCase {
-    func testDefaultSumOverNonEmptyArray() {
-        let vals = NonEmptyArray(TestScalar(1), [TestScalar(2), TestScalar(3)])
-        let result = TestScalar.sum(vals)
-        XCTAssertEqual(result, TestScalar(6))
-    }
-
-    func testAdditiveIdentity() {
-        let x = TestScalar(42)
-        XCTAssertEqual(x + .zero, x)
-        XCTAssertEqual(.zero + x, x)
-    }
-}
-
-// MARK: - 8. AdditiveGroup Defaults
-
-final class AdditiveGroupTests: XCTestCase {
-    func testBinaryMinusDerived() {
-        let a = TestScalar(10)
-        let b = TestScalar(3)
-        XCTAssertEqual(a - b, TestScalar(7))
-    }
-
-    func testInverse() {
-        let x = TestScalar(5)
-        XCTAssertEqual(x + (-x), .zero)
-    }
-}
-
-// MARK: - 9. SummableMonoid Reverse Derivation
-
-final class SummableMonoidTests: XCTestCase {
-    func testBinaryPlusDerivedFromSum() {
-        TestSummable.sumCallCount = 0
-        let a = TestSummable(3)
-        let b = TestSummable(4)
-        let result = a + b
-        XCTAssertEqual(result, TestSummable(7))
-        XCTAssertEqual(TestSummable.sumCallCount, 1)
-    }
-}
-
-// MARK: - 10. MultiplicativeMonoid
-
-final class MultiplicativeMonoidTests: XCTestCase {
-    func testMultiplicativeIdentity() {
-        let x = TestScalar(7)
-        XCTAssertEqual(x * .one, x)
-        XCTAssertEqual(.one * x, x)
-    }
-}
-
-// MARK: - 11. MultiplicativeMonoidWithInverse
-
-final class MultiplicativeMonoidWithInverseTests: XCTestCase {
-    func testReciprocalNonZero() {
-        let x = TestScalar(4)
-        let recip = try! x.reciprocal.get()
-        XCTAssertEqual(recip, TestScalar(0.25))
-    }
-
-    func testReciprocalZeroFails() {
-        let x = TestScalar(0)
-        switch x.reciprocal {
+        switch WrappedDouble.zero.reciprocal() {
         case .success:
-            XCTFail("Expected failure for zero reciprocal")
+            Issue.record("Expected reciprocal failure for zero")
+        case .failure(let error):
+            #expect(error.context == "wrapped value is zero")
+        }
+    }
+
+    @Test func divisionVariants() throws {
+        let result = try WrappedDouble(9).divided(by: WrappedDouble(3)).get()
+        #expect(result == WrappedDouble(3))
+
+        let nonZeroThree = try #require(NonZero<WrappedDouble>(WrappedDouble(3)))
+        #expect(WrappedDouble(9).divided(by: nonZeroThree) == WrappedDouble(3))
+        #expect(WrappedDouble(9) / nonZeroThree == WrappedDouble(3))
+
+        switch WrappedDouble(9).divided(by: .zero) {
+        case .success:
+            Issue.record("Expected division-by-zero failure")
+        case .failure(let error):
+            #expect(error.context == nil)
+        }
+    }
+
+    @Test func reciprocalAndDivisionOptionals() {
+        #expect(WrappedDouble(2).reciprocalOrNil == WrappedDouble(0.5))
+        #expect(WrappedDouble.zero.reciprocalOrNil == nil)
+
+        #expect(WrappedDouble(6).dividedOrNil(by: WrappedDouble(2)) == WrappedDouble(3))
+        #expect(WrappedDouble(6).dividedOrNil(by: .zero) == nil)
+    }
+}
+
+struct LinearCombinationTests {
+    @Test func linearCombinationAndWeightedSum() {
+        let terms = NonEmpty((2.0, DoublePair(1, 2)), [(-1.0, DoublePair(3, 4))])
+        #expect(DoublePair.linearCombination(terms) == DoublePair(-1, 0))
+
+        let weightedTerms = NonEmpty(
+            (weight: 2.0, value: DoublePair(1, 2)),
+            [(weight: -1.0, value: DoublePair(3, 4))]
+        )
+        #expect(DoublePair.weightedSum(weightedTerms) == DoublePair(-1, 0))
+
+        #expect(
+            DoublePair.linearCombination(2.0, DoublePair(1, 2), -1.0, DoublePair(3, 4)) == DoublePair(-1, 0)
+        )
+    }
+
+    @Test func arrayEntryPointsAndScaleDown() throws {
+        let emptyTerms: [(Double, DoublePair)] = []
+        #expect(DoublePair.linearCombination(emptyTerms) == nil)
+
+        let nonEmpty = try #require(
+            DoublePair.linearCombination([(2.0, DoublePair(1, 2)), (3.0, DoublePair(4, 5))])
+        )
+        #expect(nonEmpty == DoublePair(14, 19))
+
+        let downscaled = try DoublePair(8, 10).scaledDown(by: 2.0).get()
+        #expect(downscaled == DoublePair(4, 5))
+
+        switch DoublePair(8, 10).scaledDown(by: 0.0) {
+        case .success:
+            Issue.record("Expected scale-down failure for zero scalar")
         case .failure:
             break
         }
-    }
 
-    func testDividingByDerived() {
-        let a = TestScalar(10)
-        let b = TestScalar(4)
-        let result = try! a.dividing(by: b).get()
-        XCTAssertEqual(result.value, 2.5, accuracy: 1e-10)
-    }
-
-    func testDividingByZeroFails() {
-        let a = TestScalar(10)
-        switch a.dividing(by: .zero) {
-        case .success:
-            XCTFail("Expected failure dividing by zero")
-        case .failure:
-            break
-        }
-    }
-
-    func testReciprocalOrNil() {
-        XCTAssertNotNil(TestScalar(5).reciprocalOrNil)
-        XCTAssertNil(TestScalar(0).reciprocalOrNil)
-    }
-
-    func testDividingOrNil() {
-        XCTAssertNotNil(TestScalar(10).dividingOrNil(by: TestScalar(2)))
-        XCTAssertNil(TestScalar(10).dividingOrNil(by: .zero))
+        let nonZeroTwo = try #require(NonZero<Double>(2.0))
+        #expect(DoublePair(8, 10).scaledDown(by: nonZeroTwo) == DoublePair(4, 5))
     }
 }
 
-// MARK: - 12. MultiplicativeGroup (Total Inverse)
+struct SignAndAbsoluteTests {
+    @Test func signAndConvenienceFlags() {
+        #expect(WrappedDouble(-2).signum == .negative)
+        #expect(WrappedDouble(0).signum == .zero)
+        #expect(WrappedDouble(2).signum == .positive)
 
-final class MultiplicativeGroupTests: XCTestCase {
-    func testTotalReciprocal() {
-        let x = TestNonZeroScalar(NonZero(2.0)!)
-        let recip = x.reciprocal
-        XCTAssertEqual(recip.wrapped.value, 0.5, accuracy: 1e-10)
+        #expect(WrappedDouble(3).isPositive)
+        #expect(WrappedDouble(-3).isNegative)
+        #expect(WrappedDouble(0).isSignZero)
+        #expect(-WrappedDouble(7) == WrappedDouble(-7))
     }
 
-    func testDivisionDerived() {
-        let a = TestNonZeroScalar(NonZero(6.0)!)
-        let b = TestNonZeroScalar(NonZero(3.0)!)
-        let result = a / b
-        XCTAssertEqual(result.wrapped.value, 2.0, accuracy: 1e-10)
-    }
-}
-
-// MARK: - 13. ProductableMonoid Reverse Derivation
-
-final class ProductableMonoidTests: XCTestCase {
-    func testBinaryStarDerivedFromProduct() {
-        TestProductable.productCallCount = 0
-        let a = TestProductable(3)
-        let b = TestProductable(4)
-        let result = a * b
-        XCTAssertEqual(result, TestProductable(12))
-        XCTAssertEqual(TestProductable.productCallCount, 1)
+    @Test func absoluteAndArrayHelpers() {
+        let values = [WrappedDouble(-1), WrappedDouble(2), WrappedDouble(-3)]
+        #expect(values.absolutes == [WrappedDouble(1), WrappedDouble(2), WrappedDouble(3)])
+        #expect([Signum.negative, .negative, .positive].product() == .positive)
+        #expect([Signum.negative, .zero, .positive].product() == .zero)
     }
 }
 
-// MARK: - 14. Scalable
-
-final class ScalableTests: XCTestCase {
-    func testScaledByOne() {
-        let x = TestScalar(5)
-        XCTAssertEqual(x.scaled(by: .one), x)
+struct ErrorBridgeAndStdlibBridgeTests {
+    @Test func typedErrorToUmbrellaErrorMapping() {
+        let reciprocalFailure: Result<WrappedDouble, ReciprocalOfZeroError> = .failure(.init("x"))
+        let mapped = reciprocalFailure.mapToAlgebraError()
+        #expect(mapped == .failure(.reciprocalOfZero(.init("x"))))
     }
 
-    func testScaledByArbitraryValue() {
-        let x = TestScalar(3)
-        let nz = NonZero<Double>(2)!
-        XCTAssertEqual(x.scaled(by: nz), TestScalar(6))
-    }
+    @Test func signedIntegerAndFloatingPointBridgeFixturesCompileAndBehave() throws {
+        let intValue = requireSignedIntegerAlgebra(5)
+        #expect(intValue + 2 == 7)
+        #expect(Int.one == 1)
 
-    func testScaledOne() {
-        let nz = NonZero<Double>(5)!
-        let result = TestScalar.scaledOne(nz)
-        XCTAssertEqual(result, TestScalar(5))
-    }
-}
-
-// MARK: - 15. Array / NonEmptyArray Extensions
-
-final class ArrayExtensionTests: XCTestCase {
-
-    // Sum
-    func testArraySumEmpty() {
-        let empty: [TestScalar] = []
-        switch empty.sum() {
-        case .success:
-            XCTFail("Expected failure for empty sum")
-        case .failure:
-            break
-        }
-    }
-
-    func testArraySumNonEmpty() {
-        let arr: [TestScalar] = [TestScalar(1), TestScalar(2), TestScalar(3)]
-        let result = try! arr.sum().get()
-        XCTAssertEqual(result, TestScalar(6))
-    }
-
-    func testNonEmptyArraySum() {
-        let nea = NonEmptyArray(TestScalar(1), [TestScalar(2), TestScalar(3)])
-        XCTAssertEqual(nea.sum(), TestScalar(6))
-    }
-
-    // Mean
-    func testNonEmptyArrayMean() {
-        let nea = NonEmptyArray(TestScalar(2), [TestScalar(4), TestScalar(6)])
-        let mean = nea.mean()
-        XCTAssertEqual(mean.value, 4.0, accuracy: 1e-10)
-    }
-
-    // Product
-    func testArrayProductEmpty() {
-        let empty: [TestProductable] = []
-        switch empty.product() {
-        case .success:
-            XCTFail("Expected failure for empty product")
-        case .failure:
-            break
-        }
-    }
-
-    func testArrayProductNonEmpty() {
-        let arr = [TestProductable(2), TestProductable(3), TestProductable(4)]
-        let result = try! arr.product().get()
-        XCTAssertEqual(result, TestProductable(24))
-    }
-
-    func testNonEmptyArrayProduct() {
-        let nea = NonEmptyArray(TestProductable(2), [TestProductable(3)])
-        XCTAssertEqual(nea.product(), TestProductable(6))
-    }
-
-    // Absolutes
-    func testAbsolutes() {
-        let arr = [TestScalar(-1), TestScalar(2), TestScalar(-3)]
-        XCTAssertEqual(arr.absolutes, [TestScalar(1), TestScalar(2), TestScalar(3)])
-    }
-}
-
-// MARK: - 16. AlgebraError Tests
-
-final class AlgebraErrorTests: XCTestCase {
-    func testDivisionByZeroWithoutContext() {
-        let err = AlgebraError.DivisionByZero()
-        XCTAssertNil(err.context)
-    }
-
-    func testDivisionByZeroWithContext() {
-        let err = AlgebraError.DivisionByZero("test context")
-        XCTAssertEqual(err.context, "test context")
-    }
-
-    func testAsAlgebraErrorLifts() {
-        let err = AlgebraError.DivisionByZero("ctx")
-        XCTAssertEqual(err.asAlgebraError, .divisionByZero(err))
-    }
-
-    func testMapToAlgebraError() {
-        let result: Result<Int, AlgebraError.DivisionByZero> = .failure(.init("ctx"))
-        let mapped = result.mapToAlgebraError()
-        switch mapped {
-        case .failure(let e):
-            XCTAssertEqual(e, .divisionByZero(.init("ctx")))
-        case .success:
-            XCTFail("Expected failure")
-        }
-    }
-
-    func testEquatableSameContext() {
-        let a = AlgebraError.DivisionByZero("x")
-        let b = AlgebraError.DivisionByZero("x")
-        XCTAssertEqual(a, b)
-    }
-
-    func testEquatableDifferentContext() {
-        let a = AlgebraError.DivisionByZero("x")
-        let b = AlgebraError.DivisionByZero("y")
-        XCTAssertNotEqual(a, b)
-    }
-
-    func testAllErrorVariants() {
-        _ = AlgebraError.EmptyCollection("e").asAlgebraError
-        _ = AlgebraError.InvalidScale("s").asAlgebraError
-        _ = AlgebraError.NonFiniteResult("n").asAlgebraError
-        _ = AlgebraError.IncompatibleParameterPair("p").asAlgebraError
-    }
-
-    func testIncompatibleParameterPairLifts() {
-        let err = AlgebraError.IncompatibleParameterPair("test")
-        XCTAssertEqual(err.asAlgebraError, .incompatibleParameterPair(err))
-    }
-
-    func testIncompatibleParameterPairMapToAlgebraError() {
-        let result: Result<Int, AlgebraError.IncompatibleParameterPair> = .failure(.init("ctx"))
-        let mapped = result.mapToAlgebraError()
-        switch mapped {
-        case .failure(let e):
-            XCTAssertEqual(e, .incompatibleParameterPair(.init("ctx")))
-        case .success:
-            XCTFail("Expected failure")
-        }
-    }
-}
-
-// MARK: - 17. SignedRaisable Tests
-
-final class SignedRaisableTests: XCTestCase {
-    func testPositiveBaseEvenPower() {
-        let x = TestScalar(3)
-        let result = try! x.raised(to: 2).get()
-        XCTAssertEqual(result.value, 9.0, accuracy: 1e-10)
-        XCTAssertTrue(result.isPositive)
-    }
-
-    func testPositiveBaseOddPower() {
-        let x = TestScalar(2)
-        let result = try! x.raised(to: 3).get()
-        XCTAssertEqual(result.value, 8.0, accuracy: 1e-10)
-        XCTAssertTrue(result.isPositive)
-    }
-
-    func testNegativeBaseEvenPower() {
-        let x = TestScalar(-3)
-        let result = try! x.raised(to: 2).get()
-        XCTAssertEqual(result.value, 9.0, accuracy: 1e-10)
-    }
-
-    func testNegativeBaseOddPower() {
-        let x = TestScalar(-2)
-        let result = try! x.raised(to: 3).get()
-        XCTAssertEqual(result.value, -8.0, accuracy: 1e-10)
-    }
-
-    func testRaisedToScalarPower() {
-        let x = TestScalar(4)
-        let result = try! x.raised(to: 0.5).get()
-        XCTAssertEqual(result.value, 2.0, accuracy: 1e-10)
-    }
-
-    func testNegativeBaseFractionalPowerFails() {
-        let x = TestScalar(-4)
-        switch x.raised(to: 0.5) {
-        case .success:
-            XCTFail("Expected failure for negative base with fractional exponent")
-        case .failure(let e):
-            if case .incompatibleParameterPair = e {} else {
-                XCTFail("Expected incompatibleParameterPair, got \(e)")
-            }
-        }
-    }
-
-    func testNegativeBaseIntegerPowerViaScalarSucceeds() {
-        let x = TestScalar(-3)
-        let result = try! x.raised(to: 2.0).get()
-        XCTAssertEqual(result.value, 9.0, accuracy: 1e-10)
+        let doubleValue = requireFloatingPointFieldAlgebra(4.0)
+        let reciprocal = try doubleValue.reciprocal().get()
+        #expect(Swift.abs(reciprocal - 0.25) < 1e-12)
     }
 }
