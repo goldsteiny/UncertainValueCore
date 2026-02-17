@@ -34,6 +34,11 @@ public extension AdditiveSemigroup {
 
 public extension AdditivelySummable {
     @inlinable
+    static func sum(_ values: NonEmpty<Self>) -> Self where Self: AdditiveSemigroup {
+        values.tail.reduce(values.head, +)
+    }
+
+    @inlinable
     static func + (lhs: Self, rhs: Self) -> Self {
         sum(NonEmpty(lhs, [rhs]))
     }

@@ -28,6 +28,13 @@ public extension NonZero where Value: One {
     }
 }
 
+public extension NonZero where Value: MultiplicativeMonoidWithPartialReciprocal {
+    @inlinable
+    var unit: Unit<Value>? {
+        Unit(value)
+    }
+}
+
 extension NonZero: Equatable where Value: Equatable {}
 extension NonZero: Hashable where Value: Hashable {}
 
@@ -37,8 +44,4 @@ public func * <Value: MultiplicativeSemigroup>(lhs: Value, rhs: NonZero<Value>) 
 
 public func * <Value: MultiplicativeSemigroup>(lhs: NonZero<Value>, rhs: Value) -> Value {
     lhs.value * rhs
-}
-
-public func / <Value: MultiplicativeMonoidWithPartialReciprocal>(lhs: Value, rhs: NonZero<Value>) -> Value {
-    lhs.divided(by: rhs)
 }

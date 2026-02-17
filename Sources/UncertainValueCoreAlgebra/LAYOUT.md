@@ -9,13 +9,13 @@ This target is organized by algebra domain concepts instead of Swift construct k
 - `Modules/`
   - Left/right/bi-module actions, linear combinations, and module-related conveniences.
 - `Multiplicative/`
-  - Multiplicative partial-operation conveniences (reciprocal/division helpers).
+  - Multiplicative partial-operation conveniences and invertibility witnesses (`Unit`, `MultiplicativeInvertible`).
 - `Collections/`
   - Collection-level additive/product operations (`sum`, `sumResult`, `product`, `productResult`).
 - `Sign/`
   - Sign decomposition (`Signum`, `Signed`, absolute-value decomposition) and sign-related conveniences.
 - `Utilities/`
-  - Utility value types (`NonEmpty`, `NonZero`).
+  - Utility value types (`NonEmpty`, `NonZero`). `NonZero` is a zero-exclusion helper, not an invertibility witness.
 - `Errors/`
   - Typed algebra errors and umbrella mapping.
 - `Bridges/`

@@ -24,6 +24,11 @@ public extension MultiplicativeSemigroup {
 
 public extension MultiplicativelyProductable {
     @inlinable
+    static func product(_ values: NonEmpty<Self>) -> Self where Self: MultiplicativeSemigroup {
+        values.tail.reduce(values.head, *)
+    }
+
+    @inlinable
     static func * (lhs: Self, rhs: Self) -> Self {
         product(NonEmpty(lhs, [rhs]))
     }
@@ -62,13 +67,13 @@ public extension MultiplicativeMonoidWithPartialReciprocal {
     }
 
     @inlinable
-    func divided(by knownNonZero: NonZero<Self>) -> Self {
-        switch knownNonZero.value.reciprocal() {
-        case .success(let reciprocal):
-            return self * reciprocal
-        case .failure:
-            preconditionFailure("NonZero invariant broken: reciprocal failed for non-zero denominator.")
-        }
+    func divided<Inverse: MultiplicativeInvertible>(by invertible: Inverse) -> Self where Inverse.Element == Self {
+        self * invertible.reciprocal
+    }
+
+    @inlinable
+    var unit: Unit<Self>? {
+        Unit(self)
     }
 }
 

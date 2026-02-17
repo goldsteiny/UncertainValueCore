@@ -155,6 +155,17 @@ struct UtilityTypeTests {
         #expect(NonZero<WrappedDouble>(WrappedDouble(2)) != nil)
         #expect(NonZero<Int>(0) == nil)
         #expect(NonZero<Int>(5)?.value == 5)
+
+        let wrappedTwo = NonZero<WrappedDouble>(WrappedDouble(2))
+        #expect(wrappedTwo?.unit?.reciprocal == WrappedDouble(0.5))
+    }
+
+    @Test func unitWitnessFromPartialReciprocal() {
+        #expect(Unit(WrappedDouble.zero) == nil)
+
+        let unit = Unit(WrappedDouble(4))
+        #expect(unit?.value == WrappedDouble(4))
+        #expect(unit?.reciprocal == WrappedDouble(0.25))
     }
 }
 
@@ -221,9 +232,9 @@ struct ReciprocalAndDivisionTests {
         let result = try WrappedDouble(9).divided(by: WrappedDouble(3)).get()
         #expect(result == WrappedDouble(3))
 
-        let nonZeroThree = try #require(NonZero<WrappedDouble>(WrappedDouble(3)))
-        #expect(WrappedDouble(9).divided(by: nonZeroThree) == WrappedDouble(3))
-        #expect(WrappedDouble(9) / nonZeroThree == WrappedDouble(3))
+        let threeUnit = try #require(Unit(WrappedDouble(3)))
+        #expect(WrappedDouble(9).divided(by: threeUnit) == WrappedDouble(3))
+        #expect(WrappedDouble(9) / threeUnit == WrappedDouble(3))
 
         switch WrappedDouble(9).divided(by: .zero) {
         case .success:
@@ -231,14 +242,6 @@ struct ReciprocalAndDivisionTests {
         case .failure(let error):
             #expect(error.context == nil)
         }
-    }
-
-    @Test func reciprocalAndDivisionOptionals() {
-        #expect(WrappedDouble(2).reciprocalOrNil == WrappedDouble(0.5))
-        #expect(WrappedDouble.zero.reciprocalOrNil == nil)
-
-        #expect(WrappedDouble(6).dividedOrNil(by: WrappedDouble(2)) == WrappedDouble(3))
-        #expect(WrappedDouble(6).dividedOrNil(by: .zero) == nil)
     }
 }
 
@@ -277,8 +280,8 @@ struct LinearCombinationTests {
             break
         }
 
-        let nonZeroTwo = try #require(NonZero<Double>(2.0))
-        #expect(DoublePair(8, 10).scaledDown(by: nonZeroTwo) == DoublePair(4, 5))
+        let twoUnit = try #require(Unit(2.0))
+        #expect(DoublePair(8, 10).scaledDown(by: twoUnit) == DoublePair(4, 5))
     }
 }
 

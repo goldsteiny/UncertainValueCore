@@ -75,13 +75,8 @@ public extension LeftModule where Scalar: MultiplicativeMonoidWithPartialRecipro
     }
 
     @inlinable
-    func scaledDown(by knownNonZero: NonZero<Scalar>) -> Self {
-        switch knownNonZero.value.reciprocal() {
-        case .success(let reciprocal):
-            return leftScaled(by: reciprocal)
-        case .failure:
-            preconditionFailure("NonZero invariant broken: reciprocal failed for non-zero scalar.")
-        }
+    func scaledDown<Inverse: MultiplicativeInvertible>(by invertible: Inverse) -> Self where Inverse.Element == Scalar {
+        leftScaled(by: invertible.reciprocal)
     }
 }
 
@@ -126,12 +121,7 @@ public extension RightModule where Scalar: MultiplicativeMonoidWithPartialRecipr
     }
 
     @inlinable
-    func rightScaledDown(by knownNonZero: NonZero<Scalar>) -> Self {
-        switch knownNonZero.value.reciprocal() {
-        case .success(let reciprocal):
-            return rightScaled(by: reciprocal)
-        case .failure:
-            preconditionFailure("NonZero invariant broken: reciprocal failed for non-zero scalar.")
-        }
+    func rightScaledDown<Inverse: MultiplicativeInvertible>(by invertible: Inverse) -> Self where Inverse.Element == Scalar {
+        rightScaled(by: invertible.reciprocal)
     }
 }
