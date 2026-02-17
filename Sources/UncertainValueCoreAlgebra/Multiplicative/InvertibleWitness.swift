@@ -15,23 +15,24 @@ public protocol MultiplicativeInvertible: Sendable {
 /// Backward-compatible spelling alias.
 public typealias MultiplicativeInvertiable = MultiplicativeInvertible
 
-/// Canonical witness type for units in structures with partial reciprocal.
-public struct Unit<Element: MultiplicativeMonoidWithPartialReciprocal>: MultiplicativeInvertible, Sendable {
+/// Canonical witness type for units (invertible elements).
+public struct Unit<Element: MultiplicativeSemigroup>: MultiplicativeInvertible, Sendable {
     public let value: Element
     public let reciprocal: Element
-
-    /// Returns nil when the element does not admit a reciprocal.
-    @inlinable
-    public init?(_ value: Element) {
-        guard case .success(let reciprocal) = value.reciprocal() else { return nil }
-        self.value = value
-        self.reciprocal = reciprocal
-    }
 
     @inlinable
     public init(unchecked value: Element, reciprocal: Element) {
         self.value = value
         self.reciprocal = reciprocal
+    }
+}
+
+public extension Unit where Element: MultiplicativeMonoidWithUnits {
+    /// Returns nil when the element is not a unit.
+    @inlinable
+    init?(_ value: Element) {
+        guard let unit = value.unit else { return nil }
+        self = unit
     }
 }
 

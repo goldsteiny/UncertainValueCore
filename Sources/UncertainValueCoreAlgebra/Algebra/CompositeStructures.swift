@@ -12,8 +12,8 @@ public protocol Ring: Semiring, AdditiveAbelianGroup {}
 public protocol CommutativeRing: Ring, CommutativeSemiring {}
 
 /// Also called a skew field in non-commutative settings.
-public protocol DivisionRing: Ring, MultiplicativeMonoidWithPartialReciprocal {}
-public protocol Field: DivisionRing, CommutativeRing, MultiplicativeCommutativeMonoidWithPartialReciprocal {}
+public protocol DivisionRing: Ring, MultiplicativeMonoidWithUnits {}
+public protocol Field: DivisionRing, CommutativeRing, MultiplicativeCommutativeMonoidWithUnits {}
 
 public protocol LeftModuleOverRing: LeftModule where Scalar: Ring {}
 public protocol RightModuleOverRing: RightModule where Scalar: Ring {}

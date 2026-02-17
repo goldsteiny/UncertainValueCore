@@ -5,7 +5,7 @@
 //  Typed failures for partial algebraic operations.
 //
 
-public struct ReciprocalOfZeroError: Error, Equatable, Sendable {
+public struct ReciprocalUnavailableError: Error, Equatable, Sendable {
     public let context: String?
 
     public init(_ context: String? = nil) {
@@ -13,7 +13,7 @@ public struct ReciprocalOfZeroError: Error, Equatable, Sendable {
     }
 }
 
-public struct DivisionByZeroError: Error, Equatable, Sendable {
+public struct DivisionByNonUnitError: Error, Equatable, Sendable {
     public let context: String?
 
     public init(_ context: String? = nil) {
@@ -31,8 +31,8 @@ public struct EmptyCollectionError: Error, Equatable, Sendable {
 
 /// Optional umbrella when callers prefer a single algebra error domain.
 public enum AlgebraError: Error, Equatable, Sendable {
-    case reciprocalOfZero(ReciprocalOfZeroError)
-    case divisionByZero(DivisionByZeroError)
+    case reciprocalUnavailable(ReciprocalUnavailableError)
+    case divisionByNonUnit(DivisionByNonUnitError)
     case emptyCollection(EmptyCollectionError)
 }
 
@@ -40,12 +40,12 @@ public protocol AlgebraErrorConvertible: Error {
     var asAlgebraError: AlgebraError { get }
 }
 
-extension ReciprocalOfZeroError: AlgebraErrorConvertible {
-    public var asAlgebraError: AlgebraError { .reciprocalOfZero(self) }
+extension ReciprocalUnavailableError: AlgebraErrorConvertible {
+    public var asAlgebraError: AlgebraError { .reciprocalUnavailable(self) }
 }
 
-extension DivisionByZeroError: AlgebraErrorConvertible {
-    public var asAlgebraError: AlgebraError { .divisionByZero(self) }
+extension DivisionByNonUnitError: AlgebraErrorConvertible {
+    public var asAlgebraError: AlgebraError { .divisionByNonUnit(self) }
 }
 
 extension EmptyCollectionError: AlgebraErrorConvertible {

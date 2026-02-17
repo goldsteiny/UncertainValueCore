@@ -28,10 +28,10 @@ public extension NonZero where Value: One {
     }
 }
 
-public extension NonZero where Value: MultiplicativeMonoidWithPartialReciprocal {
+public extension NonZero where Value: MultiplicativeMonoidWithUnits {
     @inlinable
     var unit: Unit<Value>? {
-        Unit(value)
+        value.unit
     }
 }
 

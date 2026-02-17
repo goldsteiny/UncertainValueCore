@@ -66,12 +66,11 @@ public extension LeftModule where Scalar: MultiplicativeGroup {
     }
 }
 
-public extension LeftModule where Scalar: MultiplicativeMonoidWithPartialReciprocal {
+public extension LeftModule where Scalar: MultiplicativeMonoidWithUnits {
     @inlinable
-    func scaledDown(by scalar: Scalar) -> Result<Self, DivisionByZeroError> {
-        scalar.reciprocal()
-            .mapError { DivisionByZeroError($0.context) }
-            .map { leftScaled(by: $0) }
+    func scaledDown(by scalar: Scalar) -> Result<Self, DivisionByNonUnitError> {
+        guard let unit = scalar.unit else { return .failure(DivisionByNonUnitError()) }
+        return .success(leftScaled(by: unit.reciprocal))
     }
 
     @inlinable
@@ -112,12 +111,11 @@ public extension RightModule where Scalar: MultiplicativeGroup {
     }
 }
 
-public extension RightModule where Scalar: MultiplicativeMonoidWithPartialReciprocal {
+public extension RightModule where Scalar: MultiplicativeMonoidWithUnits {
     @inlinable
-    func rightScaledDown(by scalar: Scalar) -> Result<Self, DivisionByZeroError> {
-        scalar.reciprocal()
-            .mapError { DivisionByZeroError($0.context) }
-            .map { rightScaled(by: $0) }
+    func rightScaledDown(by scalar: Scalar) -> Result<Self, DivisionByNonUnitError> {
+        guard let unit = scalar.unit else { return .failure(DivisionByNonUnitError()) }
+        return .success(rightScaled(by: unit.reciprocal))
     }
 
     @inlinable

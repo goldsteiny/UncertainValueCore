@@ -55,6 +55,15 @@ public protocol AdditiveGroup: AdditiveMonoid {
     prefix static func - (operand: Self) -> Self
 }
 
+public extension AdditiveGroup where Self: SignedNumeric {
+    @inlinable
+    static prefix func - (operand: Self) -> Self {
+        var value = operand
+        value.negate()
+        return value
+    }
+}
+
 public extension AdditiveGroup {
     @inlinable
     static func - (lhs: Self, rhs: Self) -> Self {

@@ -69,10 +69,10 @@ extension WrappedDouble: MultiplicativeSemigroup {
     }
 }
 
-extension WrappedDouble: MultiplicativeMonoidWithPartialReciprocal {
-    func reciprocal() -> Result<WrappedDouble, ReciprocalOfZeroError> {
-        guard !isZero else { return .failure(ReciprocalOfZeroError("wrapped value is zero")) }
-        return .success(WrappedDouble(1 / raw))
+extension WrappedDouble: MultiplicativeMonoidWithUnits {
+    var unit: Unit<WrappedDouble>? {
+        guard !isZero else { return nil }
+        return Unit(unchecked: self, reciprocal: WrappedDouble(1 / raw))
     }
 }
 
@@ -132,10 +132,6 @@ extension ProductPrimitive: MultiplicativelyProductable {
 }
 
 extension ProductPrimitive: MultiplicativeMonoid {}
-
-private func requireSignedIntegerAlgebra<T: SignedIntegerAlgebra>(_ value: T) -> T {
-    value
-}
 
 private func requireFloatingPointFieldAlgebra<T: FloatingPointFieldAlgebra>(_ value: T) -> T {
     value
@@ -224,7 +220,7 @@ struct ReciprocalAndDivisionTests {
         case .success:
             Issue.record("Expected reciprocal failure for zero")
         case .failure(let error):
-            #expect(error.context == "wrapped value is zero")
+            #expect(error.context == nil)
         }
     }
 
@@ -238,7 +234,7 @@ struct ReciprocalAndDivisionTests {
 
         switch WrappedDouble(9).divided(by: .zero) {
         case .success:
-            Issue.record("Expected division-by-zero failure")
+            Issue.record("Expected division failure for non-unit denominator (zero here)")
         case .failure(let error):
             #expect(error.context == nil)
         }
@@ -275,7 +271,7 @@ struct LinearCombinationTests {
 
         switch DoublePair(8, 10).scaledDown(by: 0.0) {
         case .success:
-            Issue.record("Expected scale-down failure for zero scalar")
+            Issue.record("Expected scale-down failure for non-unit scalar (zero here)")
         case .failure:
             break
         }
@@ -307,16 +303,12 @@ struct SignAndAbsoluteTests {
 
 struct ErrorBridgeAndStdlibBridgeTests {
     @Test func typedErrorToUmbrellaErrorMapping() {
-        let reciprocalFailure: Result<WrappedDouble, ReciprocalOfZeroError> = .failure(.init("x"))
+        let reciprocalFailure: Result<WrappedDouble, ReciprocalUnavailableError> = .failure(.init("x"))
         let mapped = reciprocalFailure.mapToAlgebraError()
-        #expect(mapped == .failure(.reciprocalOfZero(.init("x"))))
+        #expect(mapped == .failure(.reciprocalUnavailable(.init("x"))))
     }
 
-    @Test func signedIntegerAndFloatingPointBridgeFixturesCompileAndBehave() throws {
-        let intValue = requireSignedIntegerAlgebra(5)
-        #expect(intValue + 2 == 7)
-        #expect(Int.one == 1)
-
+    @Test func floatingPointBridgeFixtureCompilesAndBehaves() throws {
         let doubleValue = requireFloatingPointFieldAlgebra(4.0)
         let reciprocal = try doubleValue.reciprocal().get()
         #expect(Swift.abs(reciprocal - 0.25) < 1e-12)

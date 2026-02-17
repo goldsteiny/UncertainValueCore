@@ -53,27 +53,27 @@ public extension MultiplicativeGroup {
     }
 }
 
-/// Partial reciprocal (typically undefined at zero).
-public protocol MultiplicativeMonoidWithPartialReciprocal: MultiplicativeMonoid, Zero {
-    func reciprocal() -> Result<Self, ReciprocalOfZeroError>
+/// A multiplicative monoid that can identify its units (invertible elements).
+public protocol MultiplicativeMonoidWithUnits: MultiplicativeMonoid {
+    var unit: Unit<Self>? { get }
 }
 
-public extension MultiplicativeMonoidWithPartialReciprocal {
+public extension MultiplicativeMonoidWithUnits {
     @inlinable
-    func divided(by other: Self) -> Result<Self, DivisionByZeroError> {
-        other.reciprocal()
-            .mapError { DivisionByZeroError($0.context) }
-            .map { self * $0 }
+    func reciprocal() -> Result<Self, ReciprocalUnavailableError> {
+        guard let unit else { return .failure(ReciprocalUnavailableError()) }
+        return .success(unit.reciprocal)
+    }
+
+    @inlinable
+    func divided(by other: Self) -> Result<Self, DivisionByNonUnitError> {
+        guard let denominator = other.unit else { return .failure(DivisionByNonUnitError()) }
+        return .success(self * denominator.reciprocal)
     }
 
     @inlinable
     func divided<Inverse: MultiplicativeInvertible>(by invertible: Inverse) -> Self where Inverse.Element == Self {
         self * invertible.reciprocal
-    }
-
-    @inlinable
-    var unit: Unit<Self>? {
-        Unit(self)
     }
 }
 
@@ -82,10 +82,10 @@ public extension MultiplicativeMonoidWithPartialReciprocal {
 public protocol MultiplicativeCommutativeSemigroup: MultiplicativeSemigroup {}
 public protocol MultiplicativeCommutativeMonoid: MultiplicativeMonoid, MultiplicativeCommutativeSemigroup {}
 public protocol MultiplicativeCommutativeGroup: MultiplicativeGroup, MultiplicativeCommutativeMonoid {}
-public protocol MultiplicativeCommutativeMonoidWithPartialReciprocal: MultiplicativeMonoidWithPartialReciprocal, MultiplicativeCommutativeMonoid {}
+public protocol MultiplicativeCommutativeMonoidWithUnits: MultiplicativeMonoidWithUnits, MultiplicativeCommutativeMonoid {}
 
 // MARK: - Pairing protocols for n-ary specialization
 
 public protocol MultiplicativeMonoidProductable: MultiplicativeMonoid, MultiplicativelyProductable {}
 public protocol MultiplicativeGroupProductable: MultiplicativeGroup, MultiplicativelyProductable {}
-public protocol MultiplicativeMonoidWithPartialReciprocalProductable: MultiplicativeMonoidWithPartialReciprocal, MultiplicativelyProductable {}
+public protocol MultiplicativeMonoidWithUnitsProductable: MultiplicativeMonoidWithUnits, MultiplicativelyProductable {}

@@ -9,7 +9,7 @@ This target is organized by algebra domain concepts instead of Swift construct k
 - `Modules/`
   - Left/right/bi-module actions, linear combinations, and module-related conveniences.
 - `Multiplicative/`
-  - Multiplicative partial-operation conveniences and invertibility witnesses (`Unit`, `MultiplicativeInvertible`).
+  - Multiplicative invertibility witnesses and unit operations (`Unit`, `MultiplicativeInvertible`).
 - `Collections/`
   - Collection-level additive/product operations (`sum`, `sumResult`, `product`, `productResult`).
 - `Sign/`
