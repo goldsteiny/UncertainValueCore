@@ -60,6 +60,10 @@ let package = Package(
             path: "Sources/UncertainValueCharts"
         ),
         .testTarget(
+            name: "UncertainValueCoreAlgebraTests",
+            dependencies: ["UncertainValueCoreAlgebra"]
+        ),
+        .testTarget(
             name: "UncertainValueCoreTests",
             dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra", "UncertainValueStatistics"]
         ),

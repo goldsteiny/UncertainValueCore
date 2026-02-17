@@ -20,7 +20,13 @@ public struct NonEmptyArray<Element: Sendable>: Sendable {
         self.tail = Array(array.dropFirst())
     }
 
-    public var array: [Element] { [head] + tail }
+    public var array: [Element] {
+        var result = [Element]()
+        result.reserveCapacity(count)
+        result.append(head)
+        result.append(contentsOf: tail)
+        return result
+    }
     public var count: Int { 1 + tail.count }
 
     public func map<T: Sendable>(_ transform: (Element) -> T) -> NonEmptyArray<T> {

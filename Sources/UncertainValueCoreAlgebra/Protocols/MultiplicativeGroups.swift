@@ -14,11 +14,11 @@ public protocol MultiplicativeMonoid: OneContaining {
 // MARK: - Monoid with partial inverse (may contain zero)
 
 public protocol MultiplicativeMonoidWithInverse: MultiplicativeMonoid {
-    var reciprocal: Result<Self, DivisionByZeroError> { get }
+    var reciprocal: Result<Self, AlgebraError.DivisionByZero> { get }
 }
 
 public extension MultiplicativeMonoidWithInverse {
-    func dividing(by other: Self) -> Result<Self, DivisionByZeroError> {
+    func dividing(by other: Self) -> Result<Self, AlgebraError.DivisionByZero> {
         other.reciprocal.map { self * $0 }
     }
 }

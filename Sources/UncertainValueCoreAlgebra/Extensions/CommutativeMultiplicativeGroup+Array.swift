@@ -7,8 +7,8 @@
 
 public extension Array where Element: ProductableMonoid {
     @inlinable
-    func product() -> Result<Element, EmptyCollectionError> {
-        guard let nonEmpty = NonEmptyArray(self) else { return .failure(EmptyCollectionError()) }
+    func product() -> Result<Element, AlgebraError.EmptyCollection> {
+        guard let nonEmpty = NonEmptyArray(self) else { return .failure(AlgebraError.EmptyCollection()) }
         return .success(Element.product(nonEmpty))
     }
 }

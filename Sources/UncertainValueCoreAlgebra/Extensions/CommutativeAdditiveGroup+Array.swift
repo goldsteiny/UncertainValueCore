@@ -7,8 +7,8 @@
 
 public extension Array where Element: SummableGroup {
     @inlinable
-    func sum() -> Result<Element, EmptyCollectionError> {
-        guard let nonEmpty = NonEmptyArray(self) else { return .failure(EmptyCollectionError()) }
+    func sum() -> Result<Element, AlgebraError.EmptyCollection> {
+        guard let nonEmpty = NonEmptyArray(self) else { return .failure(AlgebraError.EmptyCollection()) }
         return .success(Element.sum(nonEmpty))
     }
 }
