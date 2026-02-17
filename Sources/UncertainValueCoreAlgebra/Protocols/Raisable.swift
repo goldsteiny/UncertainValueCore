@@ -2,42 +2,28 @@
 //  Raisable.swift
 //  UncertainValueCoreAlgebra
 //
-//  Exponentiation protocols.
+//  Exponentiation protocols using Result.
 //
 
-import Foundation
-
-/// Exponentiation by integer powers.
 public protocol DiscreteRaisable: Sendable {
-    /// Raises to an integer power.
-    /// - Parameter power: Integer exponent.
-    /// - Returns: Result of exponentiation.
-    /// - Throws: `UncertainValueError.nonFinite` if result overflows/underflows.
-    func raised(to power: Int) throws -> Self
+    func raised(to power: Int) -> Result<Self, NonFiniteResultError>
 }
 
-/// Exponentiation by real powers for signed values.
-public protocol SignedRaisable: DiscreteRaisable, SignumProvidingBase {
+public protocol SignedRaisable: DiscreteRaisable, Signed {
     associatedtype Scalar: BinaryFloatingPoint
-    /// Raises to a real power.
-    /// - Parameter power: Real exponent.
-    /// - Returns: Result of exponentiation.
-    /// - Throws: `UncertainValueError.negativeInput` if base is negative,
-    ///           `UncertainValueError.nonFinite` if result overflows/underflows.
-    func raised(to power: Scalar) throws -> Self
+    func raised(to power: Scalar) -> Result<Self, NonFiniteResultError>
 }
 
-public extension SignedRaisable where Self: SignMagnitudeProviding, Scalar == Double {
-    /// Default integer-power behavior for signed values uses the magnitude.
+public extension SignedRaisable where Self: AbsoluteValueDecomposable, Scalar == Double {
     @inlinable
-    func raised(to power: Int) throws -> Self {
-        let resultAbsolute = try absolute.raised(to: Double(power))
-
-        switch signum {
-        case .negative:
-            return power.isMultiple(of: 2) ? resultAbsolute : resultAbsolute.flippedSign
-        default:
-            return resultAbsolute
+    func raised(to power: Int) -> Result<Self, NonFiniteResultError> {
+        absolute.raised(to: Double(power)).map { result in
+            switch signum {
+            case .negative where !power.isMultiple(of: 2):
+                return -result
+            default:
+                return result
+            }
         }
     }
 }

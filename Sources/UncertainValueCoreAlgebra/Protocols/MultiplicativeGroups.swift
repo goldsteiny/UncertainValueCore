@@ -2,66 +2,56 @@
 //  MultiplicativeGroups.swift
 //  UncertainValueCoreAlgebra
 //
-//  Multiplicative group protocols with norm-aware operations.
+//  Multiplicative algebraic hierarchy. Norm-free; uses Swift operators.
 //
 
-import Foundation
+// MARK: - Monoid
 
-/// Multiplicative group with a norm-aware binary operation.
-public protocol MultiplicativeGroup: OneContaining {
-    associatedtype Norm
-    func multiplying(_ other: Self, using strategy: Norm) -> Self
+public protocol MultiplicativeMonoid: OneContaining {
+    static func * (lhs: Self, rhs: Self) -> Self
 }
 
-/// Commutative multiplicative group with a list-based product primitive.
-public protocol CommutativeMultiplicativeGroup: MultiplicativeGroup {
-    static func product(_ values: [Self], using strategy: Norm) -> Self
+// MARK: - Monoid with partial inverse (may contain zero)
+
+public protocol MultiplicativeMonoidWithInverse: MultiplicativeMonoid {
+    var reciprocal: Result<Self, DivisionByZeroError> { get }
 }
 
-public extension CommutativeMultiplicativeGroup {
-    /// Default binary multiplication delegates to the list-based primitive.
-    @inlinable
-    func multiplying(_ other: Self, using strategy: Norm) -> Self {
-        Self.product([self, other], using: strategy)
+public extension MultiplicativeMonoidWithInverse {
+    func dividing(by other: Self) -> Result<Self, DivisionByZeroError> {
+        other.reciprocal.map { self * $0 }
     }
 }
 
-/// Multiplicative group that can contain zero (reciprocal may throw).
-public protocol MultiplicativeGroupWithZero: MultiplicativeGroup {
-    var reciprocal: Self { get throws }
+// MARK: - True group (total inverse)
+
+public protocol MultiplicativeGroup: MultiplicativeMonoid {
+    var reciprocal: Self { get }
 }
 
-public extension MultiplicativeGroupWithZero {
-    /// Divides by another value using the specified norm strategy.
-    @inlinable
-    func dividing(by other: Self, using strategy: Norm) throws -> Self {
-        try multiplying(other.reciprocal, using: strategy)
+public extension MultiplicativeGroup {
+    static func / (lhs: Self, rhs: Self) -> Self {
+        lhs * rhs.reciprocal
     }
 }
 
-/// Multiplicative group that cannot represent zero.
-public protocol MultiplicativeGroupWithoutZero: MultiplicativeGroupWithZero {
-    var reciprocalAssumingNonZero: Self { get }
+// MARK: - Commutative markers
+
+public protocol CommutativeMultiplicativeMonoid: MultiplicativeMonoid {}
+public protocol CommutativeMultiplicativeMonoidWithInverse: MultiplicativeMonoidWithInverse, CommutativeMultiplicativeMonoid {}
+public protocol CommutativeMultiplicativeGroup: MultiplicativeGroup, CommutativeMultiplicativeMonoid {}
+
+// MARK: - Productable (opt-in efficient n-ary operation)
+
+public protocol ProductableMonoid: MultiplicativeMonoid {
+    static func product(_ values: NonEmptyArray<Self>) -> Self
 }
 
-public extension MultiplicativeGroupWithoutZero {
-    /// Default throwing reciprocal implementation for non-zero types.
+public extension ProductableMonoid {
     @inlinable
-    var reciprocal: Self {
-        get throws {
-            reciprocalAssumingNonZero
-        }
-    }
-
-    /// Non-throwing division for non-zero types.
-    @inlinable
-    func dividingAssumingNonZero(by other: Self, using strategy: Norm) -> Self {
-        multiplying(other.reciprocalAssumingNonZero, using: strategy)
+    static func * (lhs: Self, rhs: Self) -> Self {
+        product(NonEmptyArray(lhs, [rhs]))
     }
 }
 
-/// Commutative multiplicative group that can contain zero.
-public protocol CommutativeMultiplicativeGroupWithZero: CommutativeMultiplicativeGroup, MultiplicativeGroupWithZero {}
-
-/// Commutative multiplicative group that cannot represent zero.
-public protocol CommutativeMultiplicativeGroupWithoutZero: CommutativeMultiplicativeGroup, MultiplicativeGroupWithoutZero {}
+public protocol ProductableMonoidWithInverse: MultiplicativeMonoidWithInverse, ProductableMonoid {}

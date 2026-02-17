@@ -5,24 +5,24 @@
 //  Array conveniences for additive groups.
 //
 
-import Foundation
-
 public extension Array where Element: SummableGroup {
-    /// Sums all elements using the specified norm strategy.
     @inlinable
-    func sum(using strategy: Element.Norm) -> Element {
-        Element.sum(self, using: strategy)
+    func sum() -> Result<Element, EmptyCollectionError> {
+        guard let nonEmpty = NonEmptyArray(self) else { return .failure(EmptyCollectionError()) }
+        return .success(Element.sum(nonEmpty))
     }
 }
 
+public extension NonEmptyArray where Element: SummableGroup {
+    @inlinable
+    func sum() -> Element {
+        Element.sum(self)
+    }
+}
 
-public extension Array where Element: CommutativeAdditiveGroup & Scalable {
-    /// Mean of all values with error propagation using the specified norm.
-    /// - Parameter strategy: The norm strategy for combining absolute errors.
-    /// - Returns: Mean with combined uncertainty.
-    /// - Throws: `UncertainValueError.emptyCollection` for empty array.
-    func mean(using strategy: Element.Norm) throws -> Element {
-        guard !isEmpty else { throw UncertainValueError.emptyCollection }
-        return try sum(using: strategy).scaledDown(by: Element.Scalar(count))
+public extension NonEmptyArray where Element: CommutativeAdditiveGroup & Scalable {
+    func mean() -> Element {
+        let recipN = NonZero<Element.Scalar>(1 / Element.Scalar(count))!
+        return Element.sum(self).scaled(by: recipN)
     }
 }

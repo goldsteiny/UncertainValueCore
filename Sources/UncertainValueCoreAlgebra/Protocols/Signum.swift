@@ -5,8 +5,6 @@
 //  Sign helpers for value types.
 //
 
-import Foundation
-
 /// A three-valued sign representation.
 public enum Signum: Int, Sendable, Codable, CaseIterable {
     case negative = -1
@@ -20,17 +18,17 @@ public extension Signum {
     }
 }
 
-/// Base protocol for types that can report sign (negative/zero/positive).
-public protocol SignumProvidingBase: Sendable {
+/// Signed type with negation. `flippedSign` is the primitive; `prefix -` is derived.
+public protocol Signed: Sendable {
     var signum: Signum { get }
     var flippedSign: Self { get }
 }
 
-/// Signum provider for types that can represent zero.
-public protocol SignumProviding: SignumProvidingBase, ZeroContaining {}
+public extension Signed {
+    prefix static func - (operand: Self) -> Self { operand.flippedSign }
+}
 
-/// Protocol for types that can provide a sign-free (absolute) value.
-public protocol SignMagnitudeProviding: SignumProvidingBase {
-    /// Absolute value of the receiver (sign removed).
+/// Signed type with absolute value decomposition: x = signum × |x|.
+public protocol AbsoluteValueDecomposable: Signed {
     var absolute: Self { get }
 }

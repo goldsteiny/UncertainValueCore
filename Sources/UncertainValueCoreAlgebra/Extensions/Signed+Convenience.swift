@@ -1,22 +1,16 @@
 //
-//  SignumProvidingBase+Convenience.swift
+//  Signed+Convenience.swift
 //  UncertainValueCoreAlgebra
 //
 //  Convenience sign checks.
 //
 
-import Foundation
-
-public extension SignumProvidingBase {
+public extension Signed {
     var isPositive: Bool {
         signum == .positive
     }
 
     var isNegative: Bool {
         signum == .negative
-    }
-
-    var isZero: Bool {
-        signum == .zero
     }
 }

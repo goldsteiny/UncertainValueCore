@@ -5,12 +5,17 @@
 //  Array conveniences for multiplicative groups.
 //
 
-import Foundation
-
-public extension Array where Element: CommutativeMultiplicativeGroup {
-    /// Computes the product of all elements using the specified norm strategy.
+public extension Array where Element: ProductableMonoid {
     @inlinable
-    func product(using strategy: Element.Norm) -> Element {
-        Element.product(self, using: strategy)
+    func product() -> Result<Element, EmptyCollectionError> {
+        guard let nonEmpty = NonEmptyArray(self) else { return .failure(EmptyCollectionError()) }
+        return .success(Element.product(nonEmpty))
+    }
+}
+
+public extension NonEmptyArray where Element: ProductableMonoid {
+    @inlinable
+    func product() -> Element {
+        Element.product(self)
     }
 }

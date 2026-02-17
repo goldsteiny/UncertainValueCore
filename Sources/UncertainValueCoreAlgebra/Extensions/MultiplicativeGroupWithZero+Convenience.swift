@@ -1,22 +1,18 @@
 //
-//  MultiplicativeGroupWithZero+Convenience.swift
+//  MultiplicativeMonoidWithInverse+Convenience.swift
 //  UncertainValueCoreAlgebra
 //
-//  Convenience helpers for multiplicative groups with zero.
+//  Convenience helpers for multiplicative monoids with inverse.
 //
 
-import Foundation
-
-public extension MultiplicativeGroupWithZero {
-    /// Optional convenience for reciprocal.
+public extension MultiplicativeMonoidWithInverse {
     @inlinable
     var reciprocalOrNil: Self? {
-        try? reciprocal
+        try? reciprocal.get()
     }
 
-    /// Optional convenience for division.
     @inlinable
-    func dividingOrNil(by other: Self, using strategy: Norm) -> Self? {
-        try? dividing(by: other, using: strategy)
+    func dividingOrNil(by other: Self) -> Self? {
+        try? dividing(by: other).get()
     }
 }

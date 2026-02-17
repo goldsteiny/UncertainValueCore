@@ -5,19 +5,12 @@
 //  Combined algebraic structures.
 //
 
-import Foundation
-
-/// Additive commutative group with scalar scaling.
 public protocol AlgebraicVector: CommutativeAdditiveGroup, Scalable {}
 
-/// Algebra with zero (additive group + multiplicative group with zero + scaling).
-public protocol AlgebraWithZero: AdditiveGroup, MultiplicativeGroupWithZero, Scalable {}
+public protocol AlgebraWithZero: AdditiveGroup, MultiplicativeMonoidWithInverse, Scalable {}
 
-/// Algebra without zero (additive group + multiplicative group without zero + scaling).
-public protocol AlgebraWithoutZero: AdditiveGroup, MultiplicativeGroupWithoutZero, Scalable {}
+public protocol AlgebraWithoutZero: AdditiveGroup, MultiplicativeGroup, Scalable {}
 
-/// Commutative algebra with zero.
-public protocol CommutativeAlgebraWithZero: CommutativeAdditiveGroup, CommutativeMultiplicativeGroupWithZero, Scalable {}
+public protocol CommutativeAlgebraWithZero: CommutativeAdditiveGroup, CommutativeMultiplicativeMonoidWithInverse, Scalable {}
 
-/// Commutative algebra without zero.
-public protocol CommutativeAlgebraWithoutZero: CommutativeAdditiveGroup, CommutativeMultiplicativeGroupWithoutZero, Scalable {}
+public protocol CommutativeAlgebraWithoutZero: CommutativeAdditiveGroup, CommutativeMultiplicativeGroup, Scalable {}

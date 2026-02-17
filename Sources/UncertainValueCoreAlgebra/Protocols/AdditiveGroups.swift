@@ -2,59 +2,49 @@
 //  AdditiveGroups.swift
 //  UncertainValueCoreAlgebra
 //
-//  Additive group protocols with norm-aware operations.
+//  Additive algebraic hierarchy. Norm-free; uses Swift operators.
 //
 
-import Foundation
+// MARK: - Monoid
 
-/// Additive group with a norm-aware binary operation.
-public protocol AdditiveGroup: ZeroContaining {
-    associatedtype Norm
-    func adding(_ other: Self, using strategy: Norm) -> Self
-    var negative: Self { get }
+public protocol AdditiveMonoid: ZeroContaining {
+    static func + (lhs: Self, rhs: Self) -> Self
+}
+
+public extension AdditiveMonoid {
+    static func sum(_ values: NonEmptyArray<Self>) -> Self {
+        values.tail.reduce(values.head, +)
+    }
+}
+
+// MARK: - Group (monoid + inverse)
+
+public protocol AdditiveGroup: AdditiveMonoid {
+    prefix static func - (operand: Self) -> Self
 }
 
 public extension AdditiveGroup {
-    /// Subtracts another value using the specified norm strategy.
+    static func - (lhs: Self, rhs: Self) -> Self {
+        lhs + (-rhs)
+    }
+}
+
+// MARK: - Commutative markers
+
+public protocol CommutativeAdditiveMonoid: AdditiveMonoid {}
+public protocol CommutativeAdditiveGroup: AdditiveGroup, CommutativeAdditiveMonoid {}
+
+// MARK: - Summable (opt-in efficient n-ary operation)
+
+public protocol SummableMonoid: AdditiveMonoid {
+    static func sum(_ values: NonEmptyArray<Self>) -> Self
+}
+
+public extension SummableMonoid {
     @inlinable
-    func subtracting(_ other: Self, using strategy: Norm) -> Self {
-        adding(other.negative, using: strategy)
-    }
-    
-    prefix static func - (lhs: Self) -> Self {
-        lhs.negative
+    static func + (lhs: Self, rhs: Self) -> Self {
+        sum(NonEmptyArray(lhs, [rhs]))
     }
 }
 
-public extension AdditiveGroup where Self: Scalable {
-    /// Default negation using scalar scaling.
-    var negative: Self {
-        // Safe: -1 is always a valid scale factor (non-zero, finite)
-        try! scaledUp(by: -1)
-    }
-}
-
-public extension AdditiveGroup where Self: SignumProvidingBase {
-    /// Default sign flip for additive groups uses negation.
-    @inlinable
-    var flippedSign: Self {
-        negative
-    }
-}
-
-/// Group that comes with computationally better sum function.
-public protocol SummableGroup: AdditiveGroup {
-    static func sum(_ values: [Self], using strategy: Norm) -> Self
-}
-
-public extension SummableGroup {
-    /// Default binary addition delegates to the list-based primitive.
-    @inlinable
-    func adding(_ other: Self, using strategy: Norm) -> Self {
-        Self.sum([self, other], using: strategy)
-    }
-}
-
-
-/// Commutative additive group with a list-based sum primitive.
-public protocol CommutativeAdditiveGroup: SummableGroup {}
+public protocol SummableGroup: AdditiveGroup, SummableMonoid {}
