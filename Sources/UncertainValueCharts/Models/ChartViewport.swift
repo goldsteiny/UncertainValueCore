@@ -81,13 +81,19 @@ private struct ChartDataBounds {
         let points = series.flatMap(\.points)
         guard !points.isEmpty else { return nil }
 
-        let xValues = points.map(\.x.value)
-        let yValues = points.map(\.y.value)
+        let xValues = points.flatMap { $0.x.finiteBoundsIncludingValue }
+        let yValues = points.flatMap { $0.y.finiteBoundsIncludingValue }
         guard let xRange = xValues.range, let yRange = yValues.range else { return nil }
         guard xRange.isFiniteRange, yRange.isFiniteRange else { return nil }
 
         self.xRange = xRange
         self.yRange = yRange
+    }
+}
+
+private extension ChartValue {
+    var finiteBoundsIncludingValue: [Double] {
+        [lowerBound, value, upperBound].filter(\.isFinite)
     }
 }
 

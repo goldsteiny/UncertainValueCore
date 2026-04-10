@@ -73,6 +73,58 @@ struct ChartViewportFitTests {
         #expect(isRangeApproximatelyEqual(viewport.yDomain, expected: expectedY))
     }
 
+    @Test func fitToDataIncludesErrorBounds() {
+        let points = [
+            ChartPoint(
+                x: ChartValue(value: 10.0, lowerBound: 8.0, upperBound: 12.0),
+                y: ChartValue(value: 100.0, lowerBound: 95.0, upperBound: 105.0)
+            ),
+            ChartPoint(
+                x: ChartValue(value: 20.0, lowerBound: 19.0, upperBound: 21.0),
+                y: ChartValue(value: 120.0, lowerBound: 110.0, upperBound: 130.0)
+            )
+        ]
+        let series = ChartSeries(label: "Series", color: .blue, points: points)
+        let style = ChartStyle.default
+
+        let viewport = ChartViewport.fitToData(series: [series], style: style)
+        #expect(viewport != nil)
+        guard let viewport else { return }
+
+        let expectedX = expectedDomain(min: 8.0, max: 21.0, style: style)
+        let expectedY = expectedDomain(min: 95.0, max: 130.0, style: style)
+
+        #expect(isRangeApproximatelyEqual(viewport.xDomain, expected: expectedX))
+        #expect(isRangeApproximatelyEqual(viewport.yDomain, expected: expectedY))
+    }
+
+    @Test func fitToDataIncludesFlatYAxisErrorBounds() {
+        let areaError = 0.3535533906
+        let points = [
+            ChartPoint(
+                x: ChartValue(value: 1.75, lowerBound: 1.6996108891, upperBound: 1.8003891109),
+                y: ChartValue(value: 7.0, lowerBound: 7.0 - 0.2015564437, upperBound: 7.0 + 0.2015564437)
+            ),
+            ChartPoint(
+                x: ChartValue(value: 2.285714286, lowerBound: 2.2144316362, upperBound: 2.3569969358),
+                y: ChartValue(value: 7.0, lowerBound: 7.0 - 0.218303115, upperBound: 7.0 + 0.218303115)
+            ),
+            ChartPoint(
+                x: ChartValue(value: 7.0, lowerBound: 6.6464466094, upperBound: 7.3535533906),
+                y: ChartValue(value: 7.0, lowerBound: 7.0 - areaError, upperBound: 7.0 + areaError)
+            )
+        ]
+        let series = ChartSeries(label: "Series", color: .red, points: points)
+        let style = ChartStyle.default
+
+        let viewport = ChartViewport.fitToData(series: [series], style: style)
+        #expect(viewport != nil)
+        guard let viewport else { return }
+
+        let expectedY = expectedDomain(min: 7.0 - areaError, max: 7.0 + areaError, style: style)
+        #expect(isRangeApproximatelyEqual(viewport.yDomain, expected: expectedY))
+    }
+
     @Test func fitToDataUsesMinimumSpanForSinglePoint() {
         let points = [ChartPoint(x: ChartValue(5.0), y: ChartValue(7.0))]
         let series = ChartSeries(label: "Series", color: .red, points: points)
