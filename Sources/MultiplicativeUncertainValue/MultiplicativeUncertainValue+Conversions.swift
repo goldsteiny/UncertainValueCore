@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import AlgebraDomainLanguage
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Conversion Extensions
 

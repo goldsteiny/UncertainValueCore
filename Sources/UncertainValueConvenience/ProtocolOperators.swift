@@ -6,21 +6,21 @@
 //
 
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Additive Operators
 
-public func + <T: AdditiveGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
+public func + <T: CommutativeAdditiveGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
     lhs.adding(rhs, using: .l2)
 }
 
-public func - <T: AdditiveGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
+public func - <T: CommutativeAdditiveGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
     lhs.subtracting(rhs, using: .l2)
 }
 
 // MARK: - Multiplicative Operators
 
-public func * <T: MultiplicativeGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
+public func * <T: CommutativeMultiplicativeGroup>(lhs: T, rhs: T) -> T where T.Norm == NormStrategy {
     lhs.multiplying(rhs, using: .l2)
 }
 

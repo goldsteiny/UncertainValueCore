@@ -7,7 +7,7 @@
 
 import Testing
 @testable import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 import Foundation
 
 struct NormTests {

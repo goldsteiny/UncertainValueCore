@@ -6,7 +6,8 @@
 //
 
 import Foundation
-import UncertainValueCoreAlgebra
+import AlgebraDomainLanguage
+import UncertainValueSupport
 
 // MARK: - Core Type
 
@@ -64,6 +65,11 @@ public struct UncertainValue: Hashable, Sendable, Codable, CommutativeAlgebraWit
             return .zero
         }
         return value.sign == .minus ? .negative : .positive
+    }
+
+    /// Signed-compatible negation used by the shared algebra layer.
+    public var flippedSign: UncertainValue {
+        negative
     }
     
     /// Absolute value of the central value (error unchanged).

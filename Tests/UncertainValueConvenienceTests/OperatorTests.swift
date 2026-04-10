@@ -8,7 +8,7 @@
 import Testing
 @testable import UncertainValueCore
 @testable import UncertainValueConvenience
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 struct OperatorTests {
     // MARK: - Binary Operators

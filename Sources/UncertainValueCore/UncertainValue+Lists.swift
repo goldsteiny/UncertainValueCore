@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Array Helpers For Min/Max/AbsMax
 
@@ -37,6 +37,16 @@ extension Array where Element == UncertainValue {
             }
             return a.absoluteError > b.absoluteError
         }
+    }
+
+    /// Mean of all values with error propagation using the specified norm.
+    public func mean(using strategy: NormStrategy) throws -> UncertainValue {
+        guard !isEmpty else {
+            throw UncertainValueError.emptyCollection
+        }
+
+        let total = sum(using: strategy)
+        return try total.dividing(by: Double(count))
     }
 }
 

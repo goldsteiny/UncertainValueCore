@@ -8,7 +8,7 @@
 //
 
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Mixed Operators (Double, UncertainValue)
 

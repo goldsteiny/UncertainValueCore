@@ -7,9 +7,10 @@
 
 import Testing
 import Darwin
+import AlgebraDomainLanguage
 @testable import MultiplicativeUncertainValue
 @testable import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 private let accuracy = 1e-10
 

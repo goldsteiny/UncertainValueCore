@@ -9,7 +9,7 @@
 import Accelerate
 import Foundation
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 extension Array where Element == Double {
 

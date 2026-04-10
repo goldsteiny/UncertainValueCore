@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Constant Operations (no norm needed - only one uncertainty source)
 

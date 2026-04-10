@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 import Darwin
 
 public enum UncertainValueMath {

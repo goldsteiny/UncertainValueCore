@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import BoundedValuesCharts
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 #if canImport(UIKit)
 import UIKit

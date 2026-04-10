@@ -7,7 +7,7 @@
 
 import Foundation
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Mixed Operators (Double, MUV)
 

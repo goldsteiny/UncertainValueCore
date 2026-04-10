@@ -10,8 +10,8 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "UncertainValueCoreAlgebra",
-            targets: ["UncertainValueCoreAlgebra"]
+            name: "UncertainValueSupport",
+            targets: ["UncertainValueSupport"]
         ),
         .library(
             name: "UncertainValueCore",
@@ -34,38 +34,56 @@ let package = Package(
             targets: ["BoundedValuesCharts"]
         )
     ],
+    dependencies: [
+        .package(path: "../AlgebraDomainLanguage")
+    ],
     targets: [
         .target(
-            name: "UncertainValueCoreAlgebra"
+            name: "UncertainValueSupport",
+            dependencies: [
+                .product(name: "AlgebraDomainLanguage", package: "AlgebraDomainLanguage")
+            ]
         ),
         .target(
             name: "UncertainValueCore",
-            dependencies: ["UncertainValueCoreAlgebra"]
+            dependencies: [
+                "UncertainValueSupport",
+                .product(name: "AlgebraDomainLanguage", package: "AlgebraDomainLanguage")
+            ]
         ),
         .target(
             name: "UncertainValueConvenience",
-            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra"]
+            dependencies: ["UncertainValueCore", "UncertainValueSupport"]
         ),
         .target(
             name: "MultiplicativeUncertainValue",
-            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra"]
+            dependencies: [
+                "UncertainValueCore",
+                "UncertainValueSupport",
+                .product(name: "AlgebraDomainLanguage", package: "AlgebraDomainLanguage")
+            ]
         ),
         .target(
             name: "UncertainValueStatistics",
-            dependencies: ["UncertainValueCore", "MultiplicativeUncertainValue"]
+            dependencies: [
+                "UncertainValueCore",
+                "MultiplicativeUncertainValue",
+                "UncertainValueSupport",
+                .product(name: "AlgebraDomainLanguage", package: "AlgebraDomainLanguage")
+            ]
         ),
         .target(
             name: "BoundedValuesCharts",
-            dependencies: ["UncertainValueCoreAlgebra"],
+            dependencies: ["UncertainValueSupport"],
             path: "Sources/UncertainValueCharts"
         ),
         .testTarget(
-            name: "UncertainValueCoreAlgebraTests",
-            dependencies: ["UncertainValueCoreAlgebra"]
+            name: "UncertainValueSupportTests",
+            dependencies: ["UncertainValueSupport"]
         ),
         .testTarget(
             name: "UncertainValueCoreTests",
-            dependencies: ["UncertainValueCore", "UncertainValueCoreAlgebra", "UncertainValueStatistics"]
+            dependencies: ["UncertainValueCore", "UncertainValueSupport", "UncertainValueStatistics"]
         ),
         .testTarget(
             name: "UncertainValueConvenienceTests",
@@ -81,7 +99,7 @@ let package = Package(
         ),
         .testTarget(
             name: "BoundedValuesChartsTests",
-            dependencies: ["BoundedValuesCharts", "UncertainValueCoreAlgebra"]
+            dependencies: ["BoundedValuesCharts", "UncertainValueSupport"]
         )
     ]
 )

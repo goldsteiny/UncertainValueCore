@@ -7,8 +7,9 @@
 
 import Foundation
 import Darwin
+import AlgebraDomainLanguage
 import UncertainValueCore
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 // MARK: - Core Type
 
@@ -141,7 +142,6 @@ extension MultiplicativeUncertainValue {
 
 extension MultiplicativeUncertainValue:
     CommutativeMultiplicativeGroupWithoutZero,
-    Scalable,
     SignedRaisable,
     SignMagnitudeProviding,
     MultiplicativeErrorProviding,
@@ -204,6 +204,14 @@ extension MultiplicativeUncertainValue {
         let newSignum: Signum = (alpha > 0) ? signum : signum.flipped
 
         return .unchecked(logAbs: newLogAbs, signum: newSignum)
+    }
+
+    /// Scales by the reciprocal of a non-zero constant.
+    public func scaledDown(by alpha: Double) throws -> MultiplicativeUncertainValue {
+        guard alpha != 0, alpha.isFinite else {
+            throw UncertainValueError.invalidScale
+        }
+        return try scaledUp(by: 1 / alpha)
     }
 }
 

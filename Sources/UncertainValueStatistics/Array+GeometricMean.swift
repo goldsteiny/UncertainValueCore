@@ -7,9 +7,10 @@
 //
 
 import Foundation
+import AlgebraDomainLanguage
 import UncertainValueCore
 import MultiplicativeUncertainValue
-import UncertainValueCoreAlgebra
+import UncertainValueSupport
 
 extension Array where Element == Double {
     /// Internal implementation for geometric mean computation.
