@@ -27,8 +27,27 @@ private struct OverlayPoint: Identifiable {
 
 @ChartContentBuilder
 func chartMarks(config: ChartConfiguration, style: ChartStyle.MarkStyle) -> some ChartContent {
+    overlayBandMarks(from: config.overlayBands, yDomain: config.yAxis.domain)
     overlayLineMarks(from: config.overlays, lineWidth: style.overlayLineWidth)
     seriesMarks(from: config.series, style: style)
+}
+
+@ChartContentBuilder
+private func overlayBandMarks(
+    from bands: [ChartOverlayBand],
+    yDomain: ClosedRange<Double>?
+) -> some ChartContent {
+    if let yDomain {
+        ForEach(bands) { band in
+            RectangleMark(
+                xStart: .value("Band X Start", band.xRange.lowerBound),
+                xEnd: .value("Band X End", band.xRange.upperBound),
+                yStart: .value("Band Y Start", yDomain.lowerBound),
+                yEnd: .value("Band Y End", yDomain.upperBound)
+            )
+            .foregroundStyle(band.color.swiftUIColor.opacity(band.opacity))
+        }
+    }
 }
 
 @ChartContentBuilder

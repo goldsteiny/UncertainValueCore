@@ -287,6 +287,19 @@ struct ChartDefaultsTests {
             #expect(threeSeries.shouldShowLegend)
         }
     }
+
+    @Test func overlayBandsDoNotForceLegend() {
+        let series = makeSeries(label: "A")
+        let band = ChartOverlayBand(
+            label: "Fit Range",
+            color: .blue,
+            xRange: 1...2
+        )
+        let config = ChartConfiguration(series: [series], overlayBands: [band])
+
+        #expect(config.overlayBands == [band])
+        #expect(config.shouldShowLegend == false)
+    }
 }
 
 #if canImport(UIKit)

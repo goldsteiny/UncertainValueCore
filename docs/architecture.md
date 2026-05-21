@@ -21,6 +21,9 @@ This package provides primitives for arithmetic with measurement uncertainty. It
   - Arithmetic mean, geometric mean, standard deviation helpers (L2)
   - Depends on UncertainValueCore and MultiplicativeUncertainValue
   - Uses Accelerate (vDSP) for optimized implementations
+- UncertainValueFitting
+  - Gaussian peak fitting models and a scoped x/y-error ODR solver
+  - Depends on UncertainValueCore and UncertainValueSupport
 
 ## Core Types
 

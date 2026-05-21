@@ -17,6 +17,8 @@ This document defines the intended public API surface and the error-handling con
   - MultiplicativeUncertainValue type and conversions
 - UncertainValueStatistics
   - Arithmetic and geometric mean, standard deviation helpers
+- UncertainValueFitting
+  - Public types: FitObservation, FitObservationSeries, FitParameterControl, GaussianPeakSpecification, GaussianPeakFitter, GaussianPeakFitResult
 
 ## Error Handling Contract (Target)
 
