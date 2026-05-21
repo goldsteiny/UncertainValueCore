@@ -15,6 +15,9 @@ public struct ChartView: View {
 
     private let onViewportChanged: ((ChartViewport) -> Void)?
     private let onDoubleTap: (() -> Void)?
+    private let plotFrameInCoordinateSpace: String?
+    private let onPlotFrameChanged: ((CGRect) -> Void)?
+    private let onLiveViewportChanged: ((ChartViewport?) -> Void)?
 
     @State private var plotSize: CGSize = .zero
     @GestureState private var gestureTranslation: CGSize = .zero
@@ -24,12 +27,18 @@ public struct ChartView: View {
         config: ChartConfiguration,
         viewport: Binding<ChartViewport?>,
         onViewportChanged: ((ChartViewport) -> Void)? = nil,
-        onDoubleTap: (() -> Void)? = nil
+        onDoubleTap: (() -> Void)? = nil,
+        plotFrameInCoordinateSpace: String? = nil,
+        onPlotFrameChanged: ((CGRect) -> Void)? = nil,
+        onLiveViewportChanged: ((ChartViewport?) -> Void)? = nil
     ) {
         self.config = config
         self._viewport = viewport
         self.onViewportChanged = onViewportChanged
         self.onDoubleTap = onDoubleTap
+        self.plotFrameInCoordinateSpace = plotFrameInCoordinateSpace
+        self.onPlotFrameChanged = onPlotFrameChanged
+        self.onLiveViewportChanged = onLiveViewportChanged
     }
 
     public var body: some View {
@@ -42,6 +51,9 @@ public struct ChartView: View {
 
             interactivePlot
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: renderedViewport) { _, newViewport in
+                    onLiveViewportChanged?(newViewport)
+                }
 
             if config.shouldShowLegend {
                 ChartLegendView(
@@ -78,6 +90,7 @@ public struct ChartView: View {
                 GeometryReader { geo in
                     if let plotFrameAnchor = proxy.plotFrame {
                         let plotFrame = geo[plotFrameAnchor]
+                        let reportedFrame = reportablePlotFrame(plotFrame: plotFrame, geo: geo)
 
                         Rectangle()
                             .fill(.clear)
@@ -92,15 +105,33 @@ public struct ChartView: View {
                             )
                             .onAppear {
                                 plotSize = plotFrame.size
+                                onPlotFrameChanged?(reportedFrame)
                             }
                             .onChange(of: plotFrame.size) { _, newSize in
                                 plotSize = newSize
+                                onPlotFrameChanged?(reportedFrame)
+                            }
+                            .onChange(of: reportedFrame) { _, newFrame in
+                                onPlotFrameChanged?(newFrame)
                             }
                     } else {
                         EmptyView()
                     }
                 }
             }
+    }
+
+    /// Returns the plot frame in the caller-supplied coordinate space if one
+    /// was provided, else in the local geometry-reader's space.
+    private func reportablePlotFrame(plotFrame: CGRect, geo: GeometryProxy) -> CGRect {
+        guard let spaceName = plotFrameInCoordinateSpace else { return plotFrame }
+        let geoOriginInSpace = geo.frame(in: .named(spaceName)).origin
+        return CGRect(
+            x: geoOriginInSpace.x + plotFrame.minX,
+            y: geoOriginInSpace.y + plotFrame.minY,
+            width: plotFrame.width,
+            height: plotFrame.height
+        )
     }
 
     private var renderedViewport: ChartViewport? {
