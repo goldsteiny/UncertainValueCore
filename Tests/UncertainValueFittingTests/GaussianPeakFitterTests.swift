@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import UncertainValueFitting
+@testable import UncertainValueFitting
 
 struct GaussianPeakFitterTests {
     @Test func gaussianSpecificationRoundTripsParameterControls() throws {
@@ -320,5 +320,108 @@ struct GaussianPeakFitterTests {
 
         #expect(result.status == .converged)
         #expect(abs(result.parameters.center - 0.3) < 0.04)
+    }
+
+    @Test func sparseTailFitIsNotHorizontallyShiftedIntoWorseLocalBasin() {
+        let trueParameters = GaussianPeakParameters(
+            baseline: 0.8,
+            amplitude: 4.2,
+            center: -0.15,
+            sigma: 0.55
+        )
+        let observations = [0.30, 0.48, 0.68, 0.90].map { x in
+            FitObservation(
+                x: x,
+                y: gaussian(x: x, parameters: trueParameters),
+                xStandardDeviation: 0.03,
+                yStandardDeviation: 0.06
+            )
+        }
+        let series = FitObservationSeries(observations: observations)
+
+        let result = GaussianPeakFitter().fit(series: series)
+        let objective = GaussianFitObjective.weightedObjective(series: series, parameters: result.parameters)
+        let shiftedLeft = GaussianPeakParameters(
+            baseline: result.parameters.baseline,
+            amplitude: result.parameters.amplitude,
+            center: result.parameters.center - 0.03,
+            sigma: result.parameters.sigma
+        )
+        let shiftedRight = GaussianPeakParameters(
+            baseline: result.parameters.baseline,
+            amplitude: result.parameters.amplitude,
+            center: result.parameters.center + 0.03,
+            sigma: result.parameters.sigma
+        )
+
+        #expect(result.status == .converged)
+        #expect(result.parameters.center < observations.map(\.x).min()!)
+        #expect(objective <= GaussianFitObjective.weightedObjective(series: series, parameters: shiftedLeft) + 1e-6)
+        #expect(objective <= GaussianFitObjective.weightedObjective(series: series, parameters: shiftedRight) + 1e-6)
+    }
+
+    @Test func multiStartEscapesBadSeededStartingPoint() {
+        let trueParameters = GaussianPeakParameters(
+            baseline: 1.2,
+            amplitude: 3.5,
+            center: -0.35,
+            sigma: 0.42
+        )
+        let observations = (-20...20).map { index in
+            let x = Double(index) / 10
+            return FitObservation(
+                x: x,
+                y: gaussian(x: x, parameters: trueParameters),
+                yStandardDeviation: 0.04
+            )
+        }
+
+        let result = GaussianPeakFitter().fit(
+            series: FitObservationSeries(observations: observations),
+            specification: GaussianPeakSpecification(
+                baseline: .seeded(4.0),
+                amplitude: .seeded(0.2),
+                center: .seeded(1.4),
+                sigma: .seeded(1.5)
+            )
+        )
+
+        #expect(result.status == .converged)
+        #expect(abs(result.parameters.center - trueParameters.center) < 0.05)
+        #expect(abs(result.parameters.sigma - trueParameters.sigma) < 0.06)
+    }
+
+    @Test func weaklyConstrainedFitReportsWarning() {
+        let observations = (0..<4).map { index in
+            let x = Double(index) / 10
+            let y = 1.0 + 2.0 * exp(-0.5 * pow((x - 0.1) / 0.5, 2))
+            return FitObservation(x: x, y: y, yStandardDeviation: 0.05)
+        }
+
+        let result = GaussianPeakFitter().fit(
+            series: FitObservationSeries(observations: observations)
+        )
+
+        #expect(result.warnings.contains(.weaklyConstrainedFit))
+    }
+
+    @Test func startCandidateCapDoesNotPreventTypicalConvergence() {
+        let observations = (-25...25).map { index in
+            let x = Double(index) / 10
+            let y = 0.9 + 2.8 * exp(-0.5 * pow((x - 0.45) / 0.5, 2))
+            return FitObservation(x: x, y: y, xStandardDeviation: 0.02, yStandardDeviation: 0.05)
+        }
+
+        let result = GaussianPeakFitter(
+            options: GaussianPeakFitter.Options(maximumStartCandidates: 8)
+        ).fit(series: FitObservationSeries(observations: observations))
+
+        #expect(result.status == .converged)
+        #expect(abs(result.parameters.center - 0.45) < 0.05)
+    }
+
+    private func gaussian(x: Double, parameters: GaussianPeakParameters) -> Double {
+        parameters.baseline
+            + parameters.amplitude * exp(-0.5 * pow((x - parameters.center) / parameters.sigma, 2))
     }
 }

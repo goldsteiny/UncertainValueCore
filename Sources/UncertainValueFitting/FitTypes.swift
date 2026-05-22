@@ -157,10 +157,13 @@ public enum FitConvergenceStatus: String, Codable, Hashable, Sendable {
 public enum FitQualityWarning: Codable, Hashable, Sendable {
     case droppedNonFinitePoints(Int)
     case insufficientDegreesOfFreedom
+    case weaklyConstrainedFit
     case illConditionedCovariance
     case covarianceUnavailable
     case sigmaAtBound
     case highOrthogonalAdjustment
+    case weakLocalOptimum
+    case ambiguousFitCandidates
 }
 
 public struct FitResidual: Codable, Hashable, Sendable {
@@ -230,4 +233,3 @@ public struct GaussianPeakFitResult: Codable, Hashable, Sendable {
         self.warnings = warnings
     }
 }
-

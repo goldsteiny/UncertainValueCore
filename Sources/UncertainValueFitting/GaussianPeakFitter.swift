@@ -13,17 +13,20 @@ public struct GaussianPeakFitter: Sendable {
         public var convergenceTolerance: Double
         public var initialDamping: Double
         public var maximumDamping: Double
+        public var maximumStartCandidates: Int
 
         public init(
             maximumIterations: Int = 80,
             convergenceTolerance: Double = 1e-8,
             initialDamping: Double = 1e-3,
-            maximumDamping: Double = 1e12
+            maximumDamping: Double = 1e12,
+            maximumStartCandidates: Int = 32
         ) {
             self.maximumIterations = maximumIterations
             self.convergenceTolerance = convergenceTolerance
             self.initialDamping = initialDamping
             self.maximumDamping = maximumDamping
+            self.maximumStartCandidates = max(1, maximumStartCandidates)
         }
     }
 
@@ -51,16 +54,114 @@ public struct GaussianPeakFitter: Sendable {
         let scaledSpecification = scale.scaledSpecification(specification)
         let defaults = WorkingParameters.estimate(from: observations)
         let controls = ParameterControls(specification: scaledSpecification, defaults: defaults)
-        var current = controls.initialParameters
 
-        guard current.isFinite, controls.freeParameterCount <= observations.count else {
+        guard controls.initialParameters.isFinite, controls.freeParameterCount <= observations.count else {
             return emptyResult(status: .insufficientData, droppedCount: droppedCount)
         }
 
+        let starts = GaussianStartCandidateBuilder(
+            observations: observations,
+            controls: controls,
+            defaults: defaults,
+            maximumCount: options.maximumStartCandidates
+        ).candidates()
+        let optimizedFits = starts.map { start in
+            optimize(start: start, controls: controls, observations: observations)
+        }
+
+        guard let selectedFit = selectBestFit(from: optimizedFits) else {
+            return emptyResult(status: .singularSystem, droppedCount: droppedCount)
+        }
+
+        let finalFit = polishLocalOptimum(
+            selectedFit,
+            controls: controls,
+            observations: observations
+        )
+        var warnings = finalFit.warnings
+        if hasAmbiguousCompetition(best: finalFit, candidates: optimizedFits) {
+            warnings.append(.ambiguousFitCandidates)
+        }
+        if controls.freeParameterCount >= observations.count {
+            warnings.append(.weaklyConstrainedFit)
+        }
+
+        let finalEvaluation = finalFit.evaluation
+        let covarianceResult = covariance(
+            parameters: finalFit.parameters,
+            controls: controls,
+            evaluation: finalEvaluation
+        )
+
+        warnings += covarianceResult.warnings
+        if droppedCount > 0 {
+            warnings.append(.droppedNonFinitePoints(droppedCount))
+        }
+        if controls.isSigmaAtBound(finalFit.parameters) {
+            warnings.append(.sigmaAtBound)
+        }
+        if finalEvaluation.hasHighOrthogonalAdjustment {
+            warnings.append(.highOrthogonalAdjustment)
+        }
+
+        let rawParameters = scale.rawParameters(finalFit.parameters.rawValue)
+        let rawUncertainties = scale.rawUncertainties(
+            scaledParameters: finalFit.parameters.rawValue,
+            scaledUncertainties: covarianceResult.uncertainties,
+            fixedParameters: controls.fixedParameters
+        )
+
+        return GaussianPeakFitResult(
+            parameters: rawParameters,
+            uncertainties: rawUncertainties,
+            covariance: covarianceResult.rawCovariance.map(scale.rawCovariance),
+            residuals: finalEvaluation.residuals.map(scale.rawResidual),
+            observationsUsed: observations.count,
+            observationsDropped: droppedCount,
+            degreesOfFreedom: covarianceResult.degreesOfFreedom,
+            reducedChiSquare: covarianceResult.reducedChiSquare,
+            iterations: finalFit.iterations,
+            status: finalFit.status,
+            warnings: warnings.uniquePreservingOrder
+        )
+    }
+}
+
+private extension GaussianPeakFitter {
+    struct OptimizedFit {
+        let parameters: WorkingParameters
+        let evaluation: Evaluation
+        let status: FitConvergenceStatus
+        let iterations: Int
+        let warnings: [FitQualityWarning]
+    }
+
+    func emptyResult(status: FitConvergenceStatus, droppedCount: Int) -> GaussianPeakFitResult {
+        GaussianPeakFitResult(
+            parameters: GaussianPeakParameters(baseline: 0, amplitude: 0, center: 0, sigma: 1),
+            uncertainties: .unavailable,
+            covariance: nil,
+            residuals: [],
+            observationsUsed: 0,
+            observationsDropped: droppedCount,
+            degreesOfFreedom: 0,
+            reducedChiSquare: nil,
+            iterations: 0,
+            status: status,
+            warnings: [.covarianceUnavailable]
+        )
+    }
+
+    func optimize(
+        start: WorkingParameters,
+        controls: ParameterControls,
+        observations: [ScaledObservation]
+    ) -> OptimizedFit {
+        var current = controls.clamped(start)
+        var currentEvaluation = Evaluation(parameters: current, observations: observations)
         var damping = options.initialDamping
         var status: FitConvergenceStatus = .maxIterations
         var iterations = 0
-        var currentEvaluation = Evaluation(parameters: current, observations: observations)
 
         for iteration in 0..<options.maximumIterations {
             iterations = iteration + 1
@@ -84,12 +185,13 @@ public struct GaussianPeakFitter: Sendable {
             let trialEvaluation = Evaluation(parameters: trial, observations: observations)
 
             if trialEvaluation.objective < currentEvaluation.objective {
-                let improvement = currentEvaluation.objective - trialEvaluation.objective
+                let previousObjective = currentEvaluation.objective
                 current = trial
                 currentEvaluation = trialEvaluation
                 damping = max(damping / 3, 1e-12)
 
-                let relativeImprovement = improvement / max(currentEvaluation.objective, 1)
+                let improvement = previousObjective - currentEvaluation.objective
+                let relativeImprovement = improvement / max(previousObjective, 1)
                 if relativeImprovement < options.convergenceTolerance {
                     status = .converged
                     break
@@ -103,62 +205,96 @@ public struct GaussianPeakFitter: Sendable {
             }
         }
 
-        let finalEvaluation = Evaluation(parameters: current, observations: observations)
-        let covarianceResult = covariance(
+        return OptimizedFit(
             parameters: current,
-            controls: controls,
-            evaluation: finalEvaluation
-        )
-
-        var warnings = covarianceResult.warnings
-        if droppedCount > 0 {
-            warnings.append(.droppedNonFinitePoints(droppedCount))
-        }
-        if controls.isSigmaAtBound(current) {
-            warnings.append(.sigmaAtBound)
-        }
-        if finalEvaluation.hasHighOrthogonalAdjustment {
-            warnings.append(.highOrthogonalAdjustment)
-        }
-
-        let rawParameters = scale.rawParameters(current.rawValue)
-        let rawUncertainties = scale.rawUncertainties(
-            scaledParameters: current.rawValue,
-            scaledUncertainties: covarianceResult.uncertainties,
-            fixedParameters: controls.fixedParameters
-        )
-
-        return GaussianPeakFitResult(
-            parameters: rawParameters,
-            uncertainties: rawUncertainties,
-            covariance: covarianceResult.rawCovariance.map(scale.rawCovariance),
-            residuals: finalEvaluation.residuals.map(scale.rawResidual),
-            observationsUsed: observations.count,
-            observationsDropped: droppedCount,
-            degreesOfFreedom: covarianceResult.degreesOfFreedom,
-            reducedChiSquare: covarianceResult.reducedChiSquare,
-            iterations: iterations,
+            evaluation: currentEvaluation,
             status: status,
-            warnings: warnings.uniquePreservingOrder
+            iterations: iterations,
+            warnings: []
         )
     }
-}
 
-private extension GaussianPeakFitter {
-    func emptyResult(status: FitConvergenceStatus, droppedCount: Int) -> GaussianPeakFitResult {
-        GaussianPeakFitResult(
-            parameters: GaussianPeakParameters(baseline: 0, amplitude: 0, center: 0, sigma: 1),
-            uncertainties: .unavailable,
-            covariance: nil,
-            residuals: [],
-            observationsUsed: 0,
-            observationsDropped: droppedCount,
-            degreesOfFreedom: 0,
-            reducedChiSquare: nil,
-            iterations: 0,
-            status: status,
-            warnings: [.covarianceUnavailable]
+    func selectBestFit(from candidates: [OptimizedFit]) -> OptimizedFit? {
+        let converged = candidates.filter { $0.status == .converged }
+        let pool = converged.isEmpty ? candidates : converged
+        return pool.min { lhs, rhs in
+            lhs.evaluation.objective < rhs.evaluation.objective
+        }
+    }
+
+    func polishLocalOptimum(
+        _ fit: OptimizedFit,
+        controls: ParameterControls,
+        observations: [ScaledObservation]
+    ) -> OptimizedFit {
+        guard let probe = bestImprovingProbe(
+            fit,
+            controls: controls,
+            observations: observations
+        ) else { return fit }
+
+        let polished = optimize(
+            start: probe,
+            controls: controls,
+            observations: observations
         )
+        guard polished.evaluation.objective < fit.evaluation.objective else {
+            return OptimizedFit(
+                parameters: fit.parameters,
+                evaluation: fit.evaluation,
+                status: fit.status,
+                iterations: fit.iterations,
+                warnings: fit.warnings + [.weakLocalOptimum]
+            )
+        }
+
+        if bestImprovingProbe(polished, controls: controls, observations: observations) != nil {
+            return OptimizedFit(
+                parameters: polished.parameters,
+                evaluation: polished.evaluation,
+                status: polished.status,
+                iterations: polished.iterations,
+                warnings: polished.warnings + [.weakLocalOptimum]
+            )
+        }
+
+        return polished
+    }
+
+    func bestImprovingProbe(
+        _ fit: OptimizedFit,
+        controls: ParameterControls,
+        observations: [ScaledObservation]
+    ) -> WorkingParameters? {
+        let probes = controls.freeParameters.flatMap { parameter -> [WorkingParameters] in
+            let value = controls.value(for: parameter, in: fit.parameters)
+            let step = 1e-3 * max(abs(value), 1)
+            return [-step, step].map { delta in
+                var candidateStep = Array(repeating: 0.0, count: controls.freeParameterCount)
+                if let index = controls.freeParameters.firstIndex(of: parameter) {
+                    candidateStep[index] = delta
+                }
+                return controls.applying(step: candidateStep, to: fit.parameters)
+            }
+        }
+
+        let tolerance = max(fit.evaluation.objective, 1) * 1e-6
+        return probes
+            .map { (parameters: $0, evaluation: Evaluation(parameters: $0, observations: observations)) }
+            .filter { $0.evaluation.objective + tolerance < fit.evaluation.objective }
+            .min { $0.evaluation.objective < $1.evaluation.objective }?
+            .parameters
+    }
+
+    func hasAmbiguousCompetition(best: OptimizedFit, candidates: [OptimizedFit]) -> Bool {
+        let viable = candidates
+            .filter { $0.status == best.status || $0.status == .converged }
+            .filter { $0.parameters != best.parameters }
+        let tolerance = max(best.evaluation.objective, 1) * 1e-3
+        return viable.contains { candidate in
+            candidate.evaluation.objective <= best.evaluation.objective + tolerance
+                && candidate.parameters.isMeaningfullyDifferent(from: best.parameters)
+        }
     }
 
     func makeStep(
@@ -170,23 +306,23 @@ private extension GaussianPeakFitter {
         let freeParameters = controls.freeParameters
         guard !freeParameters.isEmpty else { return [] }
 
+        let residualVector = evaluation.weightedResidualVector
+        let columns = residualJacobianColumns(
+            parameters: parameters,
+            controls: controls,
+            evaluation: evaluation
+        )
         var normal = Array(
             repeating: Array(repeating: 0.0, count: freeParameters.count),
             count: freeParameters.count
         )
         var rhs = Array(repeating: 0.0, count: freeParameters.count)
 
-        for point in evaluation.adjustedPoints {
-            let derivatives = parameters.derivatives(at: point.xAdjusted)
-            let residual = point.yResidual / point.yScale
-            let row = freeParameters.map { parameter in
-                derivatives.derivative(for: parameter) / point.yScale
-            }
-
-            for i in row.indices {
-                rhs[i] += row[i] * residual
-                for j in row.indices {
-                    normal[i][j] += row[i] * row[j]
+        for i in freeParameters.indices {
+            for rowIndex in residualVector.indices {
+                rhs[i] -= columns[i][rowIndex] * residualVector[rowIndex]
+                for j in freeParameters.indices {
+                    normal[i][j] += columns[i][rowIndex] * columns[j][rowIndex]
                 }
             }
         }
@@ -195,7 +331,7 @@ private extension GaussianPeakFitter {
             normal[i][i] += damping * max(normal[i][i], 1)
         }
 
-        return SmallLinearAlgebra.solve(normal, rhs)
+        return GaussianLinearAlgebra.current.solve(normal, rhs)
     }
 
     func covariance(
@@ -240,7 +376,7 @@ private extension GaussianPeakFitter {
             evaluation: evaluation
         )
 
-        guard let inverse = SmallLinearAlgebra.inverse(normal) else {
+        guard let inverse = GaussianLinearAlgebra.current.inverse(normal) else {
             return CovarianceResult(
                 uncertainties: .unavailable,
                 rawCovariance: nil,
@@ -260,7 +396,7 @@ private extension GaussianPeakFitter {
             parameters: parameters,
             covariance: expanded
         )
-        let warnings: [FitQualityWarning] = SmallLinearAlgebra.isIllConditioned(normal)
+        let warnings: [FitQualityWarning] = GaussianLinearAlgebra.current.isIllConditioned(normal)
             ? [.illConditionedCovariance]
             : []
 
@@ -273,14 +409,14 @@ private extension GaussianPeakFitter {
         )
     }
 
-    func residualNormalMatrix(
+    func residualJacobianColumns(
         parameters: WorkingParameters,
         controls: ParameterControls,
         evaluation: Evaluation
     ) -> [[Double]] {
         let freeParameters = controls.freeParameters
         let baseVector = evaluation.weightedResidualVector
-        let columns = freeParameters.enumerated().map { index, parameter in
+        return freeParameters.enumerated().map { index, parameter in
             let value = controls.value(for: parameter, in: parameters)
             let epsilon = 1e-5 * max(abs(value), 1)
             var step = Array(repeating: 0.0, count: freeParameters.count)
@@ -296,6 +432,19 @@ private extension GaussianPeakFitter {
             ).weightedResidualVector
             return zip(perturbedVector, baseVector).map { ($0 - $1) / actualDelta }
         }
+    }
+
+    func residualNormalMatrix(
+        parameters: WorkingParameters,
+        controls: ParameterControls,
+        evaluation: Evaluation
+    ) -> [[Double]] {
+        let freeParameters = controls.freeParameters
+        let columns = residualJacobianColumns(
+            parameters: parameters,
+            controls: controls,
+            evaluation: evaluation
+        )
 
         return freeParameters.indices.map { row in
             freeParameters.indices.map { column in
@@ -501,7 +650,6 @@ private struct WorkingParameters: Hashable {
         let delta = x - center
         let e = expTerm(at: x)
         let sigma2 = sigma * sigma
-        let sigma3 = sigma2 * sigma
 
         return GaussianDerivatives(
             baseline: 1,
@@ -540,6 +688,15 @@ private struct WorkingParameters: Hashable {
             center: center,
             logSigma: log(max(sigma, 1e-6))
         )
+    }
+
+    func isMeaningfullyDifferent(from other: WorkingParameters) -> Bool {
+        max(
+            abs(baseline - other.baseline),
+            abs(amplitude - other.amplitude),
+            abs(center - other.center),
+            abs(logSigma - other.logSigma)
+        ) > 1e-2
     }
 
     private static func percentile(_ values: [Double], fraction: Double) -> Double {
@@ -593,6 +750,223 @@ private struct GaussianDerivatives {
     }
 }
 
+private struct GaussianStartCandidateBuilder {
+    let observations: [ScaledObservation]
+    let controls: ParameterControls
+    let defaults: WorkingParameters
+    let maximumCount: Int
+
+    func candidates() -> [WorkingParameters] {
+        guard !observations.isEmpty else { return [controls.initialParameters] }
+
+        let centerValues = controls.center.candidateValues(
+            preferred: defaults.center,
+            automatic: automaticCenterCandidates()
+        )
+        let logSigmaValues = controls.logSigma.candidateValues(
+            preferred: defaults.logSigma,
+            automatic: automaticSigmaCandidates().map { log(max($0, 1e-6)) }
+        )
+        let baselineValues = controls.baseline.candidateValues(
+            preferred: defaults.baseline,
+            automatic: automaticBaselineCandidates()
+        )
+
+        var result = [controls.initialParameters]
+        for center in centerValues {
+            for logSigma in logSigmaValues {
+                for baseline in baselineValues {
+                    let candidate = linearlyEstimatedCandidate(
+                        baseline: baseline,
+                        center: center,
+                        logSigma: logSigma
+                    )
+                    result.append(controls.clamped(candidate))
+                    guard result.count < maximumCount * 3 else { break }
+                }
+            }
+        }
+
+        return result
+            .filter(\.isFinite)
+            .uniqueApproximately
+            .prefix(maximumCount)
+            .map { $0 }
+    }
+
+    private func automaticCenterCandidates() -> [Double] {
+        let sortedByX = observations.sorted { $0.x < $1.x }
+        let xs = sortedByX.map(\.x)
+        let xMin = xs.first ?? defaults.center
+        let xMax = xs.last ?? defaults.center
+        let span = max(xMax - xMin, 1e-6)
+        let xMid = (xMin + xMax) / 2
+
+        return [
+            defaults.center,
+            extremumObservation(positivePeak: true)?.x,
+            extremumObservation(positivePeak: false)?.x,
+            weightedCenter(positivePeak: true),
+            weightedCenter(positivePeak: false),
+            xMin,
+            xMin + span * 0.25,
+            xMid,
+            xMin + span * 0.75,
+            xMax
+        ].compactMap { $0 }.uniqueApproximately
+    }
+
+    private func automaticSigmaCandidates() -> [Double] {
+        let xs = observations.map(\.x)
+        let span = max((xs.max() ?? 1) - (xs.min() ?? 0), 1e-6)
+        let spacing = typicalSpacing(from: xs)
+        return [
+            defaults.sigma,
+            spacing,
+            span / 12,
+            span / 8,
+            span / 6,
+            span / 4,
+            span / 2,
+            span
+        ]
+        .filter { $0.isFinite && $0 > 0 }
+        .uniqueApproximately
+    }
+
+    private func automaticBaselineCandidates() -> [Double] {
+        let sortedY = observations.map(\.y).sorted()
+        let sortedByX = observations.sorted { $0.x < $1.x }
+        let endpointAverage = [sortedByX.first?.y, sortedByX.last?.y].compactMap { $0 }.averageOrZero
+        return [
+            defaults.baseline,
+            percentile(sortedY, fraction: 0.05),
+            percentile(sortedY, fraction: 0.15),
+            percentile(sortedY, fraction: 0.5),
+            percentile(sortedY, fraction: 0.85),
+            percentile(sortedY, fraction: 0.95),
+            endpointAverage
+        ].uniqueApproximately
+    }
+
+    private func linearlyEstimatedCandidate(
+        baseline: Double,
+        center: Double,
+        logSigma: Double
+    ) -> WorkingParameters {
+        let sigma = exp(logSigma)
+        let basis = observations.map { observation in
+            let z = (observation.x - center) / sigma
+            return exp(-0.5 * z * z)
+        }
+        var candidate = WorkingParameters(
+            baseline: baseline,
+            amplitude: defaults.amplitude,
+            center: center,
+            logSigma: logSigma
+        )
+
+        switch (controls.baseline.isFixed, controls.amplitude.isFixed) {
+        case (true, true):
+            candidate.baseline = controls.baseline.initial
+            candidate.amplitude = controls.amplitude.initial
+        case (true, false):
+            candidate.baseline = controls.baseline.initial
+            candidate.amplitude = solveAmplitude(baseline: candidate.baseline, basis: basis)
+        case (false, true):
+            candidate.amplitude = controls.amplitude.initial
+            candidate.baseline = solveBaseline(amplitude: candidate.amplitude, basis: basis)
+        case (false, false):
+            let linear = solveBaselineAndAmplitude(basis: basis)
+            candidate.baseline = linear.baseline
+            candidate.amplitude = linear.amplitude
+        }
+
+        return candidate
+    }
+
+    private func solveBaselineAndAmplitude(basis: [Double]) -> (baseline: Double, amplitude: Double) {
+        let normalAndRHS = observations.enumerated().reduce(
+            into: (s00: 0.0, s01: 0.0, s11: 0.0, b0: 0.0, b1: 0.0)
+        ) { partial, item in
+            let weight = yWeight(for: item.element)
+            let e = basis[item.offset]
+            partial.s00 += weight
+            partial.s01 += weight * e
+            partial.s11 += weight * e * e
+            partial.b0 += weight * item.element.y
+            partial.b1 += weight * e * item.element.y
+        }
+        let determinant = normalAndRHS.s00 * normalAndRHS.s11 - normalAndRHS.s01 * normalAndRHS.s01
+        guard abs(determinant) > 1e-12 else {
+            return (defaults.baseline, defaults.amplitude)
+        }
+        let baseline = (normalAndRHS.b0 * normalAndRHS.s11 - normalAndRHS.b1 * normalAndRHS.s01) / determinant
+        let amplitude = (normalAndRHS.s00 * normalAndRHS.b1 - normalAndRHS.s01 * normalAndRHS.b0) / determinant
+        return (baseline, amplitude == 0 ? defaults.amplitude : amplitude)
+    }
+
+    private func solveAmplitude(baseline: Double, basis: [Double]) -> Double {
+        let sums = observations.enumerated().reduce(into: (normal: 0.0, rhs: 0.0)) { partial, item in
+            let weight = yWeight(for: item.element)
+            let e = basis[item.offset]
+            partial.normal += weight * e * e
+            partial.rhs += weight * e * (item.element.y - baseline)
+        }
+        guard abs(sums.normal) > 1e-12 else { return defaults.amplitude }
+        let amplitude = sums.rhs / sums.normal
+        return amplitude == 0 ? defaults.amplitude : amplitude
+    }
+
+    private func solveBaseline(amplitude: Double, basis: [Double]) -> Double {
+        let sums = observations.enumerated().reduce(into: (weight: 0.0, rhs: 0.0)) { partial, item in
+            let weight = yWeight(for: item.element)
+            partial.weight += weight
+            partial.rhs += weight * (item.element.y - amplitude * basis[item.offset])
+        }
+        guard sums.weight > 0 else { return defaults.baseline }
+        return sums.rhs / sums.weight
+    }
+
+    private func weightedCenter(positivePeak: Bool) -> Double? {
+        let baseline = positivePeak
+            ? observations.map(\.y).min() ?? defaults.baseline
+            : observations.map(\.y).max() ?? defaults.baseline
+        let weighted = observations.map { observation in
+            (weight: max(positivePeak ? observation.y - baseline : baseline - observation.y, 0), x: observation.x)
+        }
+        let weightSum = weighted.map(\.weight).reduce(0, +)
+        guard weightSum > 0 else { return nil }
+        return weighted.reduce(0) { partial, item in
+            partial + item.weight * item.x
+        } / weightSum
+    }
+
+    private func extremumObservation(positivePeak: Bool) -> ScaledObservation? {
+        positivePeak
+            ? observations.max { $0.y < $1.y }
+            : observations.min { $0.y < $1.y }
+    }
+
+    private func typicalSpacing(from xs: [Double]) -> Double {
+        let sorted = xs.sorted()
+        let gaps = zip(sorted.dropFirst(), sorted).map { $0 - $1 }.filter { $0.isFinite && $0 > 0 }
+        guard !gaps.isEmpty else { return 1e-3 }
+        return max(percentile(gaps.sorted(), fraction: 0.5), 1e-3)
+    }
+
+    private func percentile(_ values: [Double], fraction: Double) -> Double {
+        guard !values.isEmpty else { return 0 }
+        let index = min(max(Int(Double(values.count - 1) * fraction), 0), values.count - 1)
+        return values[index]
+    }
+
+    private func yWeight(for observation: ScaledObservation) -> Double {
+        let standardDeviation = observation.yStandardDeviation > 0 ? observation.yStandardDeviation : 1
+        return 1 / (standardDeviation * standardDeviation)
+    }
+}
+
 private struct ParameterControls {
     let baseline: ParameterControl
     let amplitude: ParameterControl
@@ -633,6 +1007,15 @@ private struct ParameterControls {
             amplitude: amplitude.initial,
             center: center.initial,
             logSigma: logSigma.initial
+        )
+    }
+
+    func clamped(_ parameters: WorkingParameters) -> WorkingParameters {
+        WorkingParameters(
+            baseline: baseline.clamp(parameters.baseline),
+            amplitude: amplitude.clamp(parameters.amplitude),
+            center: center.clamp(parameters.center),
+            logSigma: logSigma.clamp(parameters.logSigma)
         )
     }
 
@@ -777,6 +1160,14 @@ private struct ParameterControl {
         if let lower, abs(value - lower) < tolerance { return true }
         if let upper, abs(value - upper) < tolerance { return true }
         return false
+    }
+
+    func candidateValues(preferred: Double, automatic: [Double]) -> [Double] {
+        guard !isFixed else { return [initial] }
+        return ([initial, preferred] + automatic)
+            .filter(\.isFinite)
+            .map(clamp)
+            .uniqueApproximately
     }
 
     private static func clamp(_ value: Double, lower: Double?, upper: Double?) -> Double {
@@ -937,8 +1328,18 @@ private struct Evaluation {
     }
 }
 
-private enum SmallLinearAlgebra {
-    static func solve(_ matrix: [[Double]], _ rhs: [Double]) -> [Double]? {
+private protocol GaussianLinearAlgebraBackend: Sendable {
+    func solve(_ matrix: [[Double]], _ rhs: [Double]) -> [Double]?
+    func inverse(_ matrix: [[Double]]) -> [[Double]]?
+    func isIllConditioned(_ matrix: [[Double]]) -> Bool
+}
+
+private enum GaussianLinearAlgebra {
+    static let current: any GaussianLinearAlgebraBackend = SmallMatrixLinearAlgebraBackend()
+}
+
+private struct SmallMatrixLinearAlgebraBackend: GaussianLinearAlgebraBackend {
+    func solve(_ matrix: [[Double]], _ rhs: [Double]) -> [Double]? {
         let n = rhs.count
         guard matrix.count == n, matrix.allSatisfy({ $0.count == n }) else { return nil }
         var a = matrix
@@ -977,7 +1378,7 @@ private enum SmallLinearAlgebra {
         return x
     }
 
-    static func inverse(_ matrix: [[Double]]) -> [[Double]]? {
+    func inverse(_ matrix: [[Double]]) -> [[Double]]? {
         let n = matrix.count
         guard n > 0, matrix.allSatisfy({ $0.count == n }) else { return nil }
 
@@ -996,7 +1397,7 @@ private enum SmallLinearAlgebra {
         }
     }
 
-    static func isIllConditioned(_ matrix: [[Double]]) -> Bool {
+    func isIllConditioned(_ matrix: [[Double]]) -> Bool {
         let diagonal = matrix.indices.map { abs(matrix[$0][$0]) }.filter { $0.isFinite && $0 > 0 }
         guard let minValue = diagonal.min(), let maxValue = diagonal.max(), maxValue > 0 else { return true }
         return minValue / maxValue < 1e-10
@@ -1009,10 +1410,49 @@ private func combineErrors(_ errors: [Double?]) -> Double? {
     return sqrt(values.reduce(0) { $0 + $1 * $1 })
 }
 
+enum GaussianFitObjective {
+    static func weightedObjective(
+        series: FitObservationSeries,
+        parameters: GaussianPeakParameters,
+        xRange: ClosedRange<Double>? = nil
+    ) -> Double {
+        let finiteObservations = series.filtered(to: xRange).observations.filter(\.isFinite)
+        guard !finiteObservations.isEmpty else { return .infinity }
+        let scale = FitScale(observations: finiteObservations)
+        let scaledParameters = WorkingParameters(
+            baseline: (parameters.baseline - scale.yOffset) / scale.yScale,
+            amplitude: parameters.amplitude / scale.yScale,
+            center: (parameters.center - scale.xOffset) / scale.xScale,
+            logSigma: log(max(parameters.sigma / scale.xScale, 1e-12))
+        )
+        let observations = finiteObservations.map(scale.scaledObservation)
+        return Evaluation(parameters: scaledParameters, observations: observations).objective
+    }
+}
+
 private extension Array where Element == Double {
     var averageOrZero: Double {
         guard !isEmpty else { return 0 }
         return reduce(0, +) / Double(count)
+    }
+
+    var uniqueApproximately: [Double] {
+        reduce(into: []) { result, value in
+            guard value.isFinite else { return }
+            let alreadyPresent = result.contains { existing in
+                abs(existing - value) <= 1e-9 * Swift.max(abs(existing), abs(value), 1)
+            }
+            if !alreadyPresent { result.append(value) }
+        }
+    }
+}
+
+private extension Array where Element == WorkingParameters {
+    var uniqueApproximately: [WorkingParameters] {
+        reduce(into: []) { result, value in
+            guard !result.contains(where: { !$0.isMeaningfullyDifferent(from: value) }) else { return }
+            result.append(value)
+        }
     }
 }
 
