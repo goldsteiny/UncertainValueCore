@@ -60,34 +60,44 @@ private enum ShapiroWilkComputation {
 
         let nf = Double(n)
 
-        if n <= 11 {
-            return smallSamplePValue(w: w, n: nf)
-        } else {
-            return largeSamplePValue(w: w, n: nf)
-        }
+        let raw = n <= 11
+            ? smallSamplePValue(w: w, n: nf)
+            : largeSamplePValue(w: w, n: nf)
+
+        return min(1.0, max(0.0, raw))
     }
 
-    // Royston's approximation for n <= 11
+    // Royston (1992) approximation for n <= 11
     private static func smallSamplePValue(w: Double, n: Double) -> Double {
         let gamma = 0.459 * n - 2.273
-        let alpha = Darwin.log(1 - w)
-        let mean = -1.2725 + 1.0521 * (gamma - 1)
-        let sigma = 1.0308 - 0.26758 * (gamma - 1)
+        let logOneMinusW = Darwin.log(1 - w)
+        let argument = gamma - logOneMinusW
+        guard argument > 0 else { return 0.0 }
 
-        let z = (alpha - mean) / sigma
+        let u = -Darwin.log(argument)
+
+        let n2 = n * n
+        let n3 = n2 * n
+        let mu = -0.0006714 * n3 + 0.025054 * n2 - 0.39978 * n + 0.5440
+        let logSigma = -0.0020322 * n3 + 0.062767 * n2 - 0.77857 * n + 1.3822
+        let sigma = Darwin.exp(logSigma)
+
+        let z = (u - mu) / sigma
         return 1 - normalCDF(z)
     }
 
-    // Royston's approximation for n > 11
+    // Royston (1992/1995) approximation for n > 11.
+    // Coefficients derived empirically from SciPy's compiled AS R94 Fortran;
+    // the coefficients published in the Applied Statistics listing are incorrect.
     private static func largeSamplePValue(w: Double, n: Double) -> Double {
         let logN = Darwin.log(n)
+        let logN2 = logN * logN
+        let logN3 = logN2 * logN
 
-        let mu = -1.2725 + 1.0521 * logN
-        let logSigma = 0.2600 + 0.3190 * logN - 0.1548 * logN * logN
+        let mu = -1.5861 - 0.31082 * logN - 0.083751 * logN2 + 0.0038915 * logN3
+        let sigma = Darwin.exp(-0.4803 - 0.082676 * logN + 0.0030302 * logN2)
 
-        let sigma = Darwin.exp(logSigma)
         let z = (Darwin.log(1 - w) - mu) / sigma
-
         return 1 - normalCDF(z)
     }
 
