@@ -202,50 +202,80 @@ struct ShapiroWilkTests {
         }
     }
 
-    // MARK: - Tabulated Weight Boundary (n=50 is last tabulated, n=51 is approximated)
+    // MARK: - SciPy Reference: Weight Boundary (n=50 tabulated, n=51 approximated)
 
-    @Test func tabulatedBoundaryN50() throws {
-        // n=50: uses tabulated weights
-        let values = (1...50).map { Double($0) + Double.random(in: -0.5...0.5) }
-        let result = try values.sorted().shapiroWilkTest()
-        #expect(result.w > 0)
-        #expect(result.w <= 1.0)
-        #expect(result.pValue >= 0)
-        #expect(result.pValue <= 1.0)
+    @Test func scipyReferenceUniformN50() throws {
+        // SciPy: W = 0.9556, p = 0.0581 — last n using tabulated weights
+        let values = (0..<50).map { 9.5 + Double($0) / 49.0 }
+        let result = try values.shapiroWilkTest()
+        #expect(abs(result.w - 0.9556) < TestConstants.wTolerance,
+                "W: expected ≈ 0.956, got \(result.w)")
+        #expect(result.pValue < 0.10,
+                "p: expected < 0.10 (SciPy: 0.0581), got \(result.pValue)")
     }
 
-    @Test func approximatedWeightsN51() throws {
-        // n=51: first size to use approximated weights
-        let values = (1...51).map { Double($0) }
+    @Test func scipyReferenceUniformN51() throws {
+        // SciPy: W = 0.9555, p = 0.0539 — first n using approximated weights
+        let values = (0..<51).map { 9.5 + Double($0) / 50.0 }
         let result = try values.shapiroWilkTest()
-        #expect(result.w > 0)
-        #expect(result.w <= 1.0)
+        #expect(abs(result.w - 0.9555) < TestConstants.wTolerance,
+                "W: expected ≈ 0.956, got \(result.w)")
+        #expect(result.pValue < 0.10,
+                "p: expected < 0.10 (SciPy: 0.0539), got \(result.pValue)")
     }
 
-    @Test func approximatedWeightsN100() throws {
-        let values = (1...100).map { Double($0) }
-        let result = try values.shapiroWilkTest()
-        #expect(result.w > 0)
-        #expect(result.w <= 1.0)
+    @Test func weightBoundaryContinuity() throws {
+        // Tabulated (n=50) and approximated (n=51) should give similar W for similar data
+        let v50 = (0..<50).map { 9.5 + Double($0) / 49.0 }
+        let v51 = (0..<51).map { 9.5 + Double($0) / 50.0 }
+        let w50 = try v50.shapiroWilkTest().w
+        let w51 = try v51.shapiroWilkTest().w
+        #expect(abs(w50 - w51) < 0.01,
+                "W should be continuous across boundary: n=50 → \(w50), n=51 → \(w51)")
     }
 
-    // MARK: - Larger Samples
+    // MARK: - SciPy Reference: Large n (approximated weights)
 
-    @Test func largeSampleNormalLikeN60() throws {
-        // Quasi-normal: linearly spaced around zero
-        let values = (0..<60).map { Double($0 - 30) / 10.0 }
+    @Test func scipyReferenceUniformN100() throws {
+        // SciPy: W = 0.9547, p = 0.0017
+        let values = (0..<100).map { 49.5 + Double($0) / 99.0 }
         let result = try values.shapiroWilkTest()
-        #expect(result.w > 0)
-        #expect(result.w <= 1.0)
-        #expect(result.pValue >= 0)
-        #expect(result.pValue <= 1.0)
+        #expect(abs(result.w - 0.9547) < TestConstants.wTolerance,
+                "W: expected ≈ 0.955, got \(result.w)")
+        #expect(result.pValue < 0.05,
+                "p: expected < 0.05 (SciPy: 0.0017), got \(result.pValue)")
     }
 
-    @Test func largeSampleSkewedN60() throws {
-        // Exponential-like for n > 50
-        let values = (1...60).map { pow(1.1, Double($0)) }
+    @Test func scipyReferenceSkewedN100() throws {
+        // SciPy: W = 0.9303, p = 0.0001
+        let values = (1...100).map { pow(Double($0), 1.5) }
         let result = try values.shapiroWilkTest()
-        #expect(result.w < 0.90)
+        #expect(abs(result.w - 0.9303) < TestConstants.wTolerance,
+                "W: expected ≈ 0.930, got \(result.w)")
+        #expect(result.pValue < 0.01,
+                "p: expected < 0.01 (SciPy: 0.0001), got \(result.pValue)")
+    }
+
+    // MARK: - SciPy Reference: Max Supported (n=151)
+
+    @Test func scipyReferenceUniformN151() throws {
+        // SciPy: W = 0.9546, p = 0.0001
+        let values = (0..<151).map { 99.5 + Double($0) / 150.0 }
+        let result = try values.shapiroWilkTest()
+        #expect(abs(result.w - 0.9546) < TestConstants.wTolerance,
+                "W: expected ≈ 0.955, got \(result.w)")
+        #expect(result.pValue < 0.01,
+                "p: expected < 0.01 (SciPy: 0.0001), got \(result.pValue)")
+    }
+
+    @Test func scipyReferenceSkewedN151() throws {
+        // SciPy: W = 0.9299, p ≈ 0.000001
+        let values = (1...151).map { pow(Double($0), 1.5) }
+        let result = try values.shapiroWilkTest()
+        #expect(abs(result.w - 0.9299) < TestConstants.wTolerance,
+                "W: expected ≈ 0.930, got \(result.w)")
+        #expect(result.pValue < 0.001,
+                "p: expected < 0.001 (SciPy: 0.000001), got \(result.pValue)")
     }
 
     // MARK: - Ordering Invariance
