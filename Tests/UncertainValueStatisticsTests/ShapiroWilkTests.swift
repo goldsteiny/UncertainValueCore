@@ -230,7 +230,7 @@ struct ShapiroWilkTests {
         let v51 = (0..<51).map { 9.5 + Double($0) / 50.0 }
         let w50 = try v50.shapiroWilkTest().w
         let w51 = try v51.shapiroWilkTest().w
-        #expect(abs(w50 - w51) < 0.01,
+        #expect(abs(w50 - w51) < TestConstants.wTolerance,
                 "W should be continuous across boundary: n=50 → \(w50), n=51 → \(w51)")
     }
 

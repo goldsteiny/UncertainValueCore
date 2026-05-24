@@ -116,25 +116,68 @@ private enum ShapiroWilkCoefficients {
         return approximatedWeights(for: n)
     }
 
-    // Approximation for large n using Weisberg-Bingham (1975) method
+    // Royston AS R94 approximation for n > 50 (same coefficient path used by R/SciPy).
     private static func approximatedWeights(for n: Int) -> [Double] {
         let halfN = n / 2
-        var weights = [Double](repeating: 0, count: halfN)
+        var quantiles = [Double](repeating: 0, count: halfN)
+        let nPlusQuarter = Double(n) + 0.25
 
-        var sumSquared = 0.0
+        var pairSumSquared = 0.0
         for i in 1...halfN {
-            let mi = NormalDistribution.inverseCDF((Double(i) - 0.375) / (Double(n) + 0.25))
-            weights[halfN - i] = mi
-            sumSquared += mi * mi
+            let mi = NormalDistribution.inverseCDF((Double(i) - 0.375) / nPlusQuarter)
+            quantiles[i - 1] = mi
+            pairSumSquared += mi * mi
         }
 
-        let scale = 1.0 / Darwin.sqrt(sumSquared * 2)
-        for i in 0..<halfN {
-            weights[i] *= scale
+        let doubledSumSquared = 2.0 * pairSumSquared
+        let sqrtDoubledSumSquared = Darwin.sqrt(doubledSumSquared)
+        let reciprocalSqrtN = 1.0 / Darwin.sqrt(Double(n))
+
+        let a1 = polynomial(c1, at: reciprocalSqrtN) - quantiles[0] / sqrtDoubledSumSquared
+        var weights = quantiles
+        weights[0] = a1
+
+        if n > 5 {
+            let a2 = polynomial(c2, at: reciprocalSqrtN) - quantiles[1] / sqrtDoubledSumSquared
+            let numerator = doubledSumSquared - 2.0 * quantiles[0] * quantiles[0] - 2.0 * quantiles[1] * quantiles[1]
+            let denominator = 1.0 - 2.0 * a1 * a1 - 2.0 * a2 * a2
+            let normalization = -Darwin.sqrt(numerator / denominator)
+
+            weights[1] = a2
+            if halfN > 2 {
+                for i in 2..<halfN {
+                    weights[i] = quantiles[i] / normalization
+                }
+            }
+        } else {
+            let numerator = doubledSumSquared - 2.0 * quantiles[0] * quantiles[0]
+            let denominator = 1.0 - 2.0 * a1 * a1
+            let normalization = -Darwin.sqrt(numerator / denominator)
+
+            if halfN > 1 {
+                for i in 1..<halfN {
+                    weights[i] = quantiles[i] / normalization
+                }
+            }
         }
 
         return weights
     }
+
+    // AS 181 polynomial evaluation with coefficients in ascending power order.
+    private static func polynomial(_ coefficients: [Double], at x: Double) -> Double {
+        var value = 0.0
+        var xPower = 1.0
+        for coefficient in coefficients {
+            value += coefficient * xPower
+            xPower *= x
+        }
+        return value
+    }
+
+    // AS R94 coefficient polynomials for approximating endpoint weights.
+    private static let c1: [Double] = [0.0, 0.221157, -0.147981, -2.07119, 4.434685, -2.706056]
+    private static let c2: [Double] = [0.0, 0.042981, -0.293762, -1.752461, 5.682633, -3.582633]
 
     // Tabulated Shapiro-Wilk weights for n=3..50
     // Source: Shapiro & Wilk (1965), Royston (1992)
