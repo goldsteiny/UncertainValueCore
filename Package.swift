@@ -30,6 +30,10 @@ let package = Package(
             targets: ["UncertainValueStatistics"]
         ),
         .library(
+            name: "UncertainValueBinning",
+            targets: ["UncertainValueBinning"]
+        ),
+        .library(
             name: "UncertainValueFitting",
             targets: ["UncertainValueFitting"]
         ),
@@ -77,8 +81,12 @@ let package = Package(
             ]
         ),
         .target(
+            name: "UncertainValueBinning"
+        ),
+        .target(
             name: "UncertainValueFitting",
             dependencies: [
+                "UncertainValueBinning",
                 "UncertainValueCore",
                 "UncertainValueSupport"
             ]
@@ -109,8 +117,12 @@ let package = Package(
             dependencies: ["UncertainValueStatistics"]
         ),
         .testTarget(
+            name: "UncertainValueBinningTests",
+            dependencies: ["UncertainValueBinning"]
+        ),
+        .testTarget(
             name: "UncertainValueFittingTests",
-            dependencies: ["UncertainValueFitting"]
+            dependencies: ["UncertainValueFitting", "UncertainValueBinning"]
         ),
         .testTarget(
             name: "BoundedValuesChartsTests",
