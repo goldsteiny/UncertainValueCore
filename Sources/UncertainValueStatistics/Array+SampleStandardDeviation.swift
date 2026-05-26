@@ -31,7 +31,8 @@ extension Array where Element == Double {
 extension Array where Element == UncertainValue {
     /// Computes the sample standard deviation with error propagation.
     /// Value: norm2(deviations) / sqrt(n-1)
-    /// Error: propagated from individual measurement errors using L2 norm.
+    /// Error: first-order Gaussian propagation using
+    ///        ∂σ/∂xᵢ = (xᵢ - μ) / ((n - 1)σ).
     /// - Returns: Sample standard deviation with uncertainty.
     /// - Throws: `UncertainValueError.insufficientElements` if array has fewer than 2 elements.
     public func sampleStandardDeviationL2() throws -> UncertainValue {
@@ -43,10 +44,19 @@ extension Array where Element == UncertainValue {
         let vals = values
 
         let resultValue = try vals.sampleStandardDeviationL2()
+        if resultValue == 0 {
+            return UncertainValue(resultValue, absoluteError: 0)
+        }
 
         let mean = try vals.valuesMean()
-        let scaledDeviations = vals.map { ($0 - mean) / Darwin.sqrt(n - 1) }
-        let scaledErrors: [Double] = zip(scaledDeviations, absoluteErrors).map(*)
+        let denominator = (n - 1) * resultValue
+        if !denominator.isFinite || denominator == 0 {
+            return UncertainValue(resultValue, absoluteError: 0)
+        }
+
+        let scaledErrors = zip(vals, absoluteErrors).map { value, error in
+            ((value - mean) / denominator) * error
+        }
         let resultError = UncertainValueSupport.norm2(scaledErrors)
 
         return UncertainValue(resultValue, absoluteError: resultError)

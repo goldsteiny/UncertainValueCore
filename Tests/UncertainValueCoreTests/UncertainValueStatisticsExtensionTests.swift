@@ -204,11 +204,10 @@ struct UncertainValueStatisticsExtensionTests {
         #expect(abs(result!.value - expectedValue!) < 1e-10)
 
         // Error calculation:
-        // n=3, mean=2, deviations=[-1, 0, 1], sqrt(n-1)=sqrt(2)
-        // scaledDeviations = [-1/sqrt(2), 0, 1/sqrt(2)]
-        // scaledErrors = [(-1/sqrt(2))*0.1, 0, (1/sqrt(2))*0.1]
-        // resultError = norm2(scaledErrors) = sqrt(2 * (0.1/sqrt(2))^2) = sqrt(0.01) = 0.1
-        #expect(abs(result!.absoluteError - 0.1) < 1e-10)
+        // n=3, mean=2, deviations=[-1, 0, 1], sigma=1
+        // ∂σ/∂xᵢ = (xᵢ-μ)/((n-1)σ) = [-0.5, 0, 0.5]
+        // resultError = sqrt((0.5*0.1)^2 + (0.5*0.1)^2)
+        #expect(abs(result!.absoluteError - sqrt(0.005)) < 1e-10)
     }
 
     @Test func uncertainValueSampleStdDevIdenticalValues() {
@@ -250,11 +249,10 @@ struct UncertainValueStatisticsExtensionTests {
         #expect(abs(result!.value - sqrt(50)) < 1e-10)
 
         // Error calculation:
-        // n=2, mean=5, deviations=[-5, 5], sqrt(n-1)=1
-        // scaledDeviations = [-5, 5]
-        // scaledErrors = [-5*0.1, 5*0.1] = [-0.5, 0.5]
-        // resultError = norm2([-0.5, 0.5]) = sqrt(0.5) ≈ 0.707
-        #expect(abs(result!.absoluteError - sqrt(0.5)) < 1e-10)
+        // n=2, mean=5, deviations=[-5, 5], sigma=sqrt(50)
+        // ∂σ/∂xᵢ = (xᵢ-μ)/((n-1)σ) = ±0.707...
+        // resultError = sqrt((0.707*0.1)^2 + (0.707*0.1)^2) = 0.1
+        #expect(abs(result!.absoluteError - 0.1) < 1e-10)
     }
 
     @Test func uncertainValueSampleStdDevSymmetric() {
@@ -273,11 +271,10 @@ struct UncertainValueStatisticsExtensionTests {
         #expect(abs(result!.value - expectedValue!) < 1e-10)
 
         // Error calculation:
-        // n=5, mean=0, deviations=[-2, -1, 0, 1, 2], sqrt(n-1)=2
-        // scaledDeviations = [-1, -0.5, 0, 0.5, 1]
-        // scaledErrors = [-0.1, -0.05, 0, 0.05, 0.1]
-        // resultError = norm2 = sqrt(0.01 + 0.0025 + 0 + 0.0025 + 0.01) = sqrt(0.025)
-        #expect(abs(result!.absoluteError - sqrt(0.025)) < 1e-10)
+        // n=5, mean=0, sigma=sqrt(2.5)
+        // ∂σ/∂xᵢ = (xᵢ-μ)/((n-1)σ) => [-0.316, -0.158, 0, 0.158, 0.316]
+        // resultError = sqrt(sum((∂σ/∂xᵢ * 0.1)^2)) = 0.05
+        #expect(abs(result!.absoluteError - 0.05) < 1e-10)
     }
 
     @Test func uncertainValueSampleStdDevLargerErrorsGiveLargerUncertainty() {
@@ -303,12 +300,10 @@ struct UncertainValueStatisticsExtensionTests {
         #expect(largeResult!.absoluteError > smallResult!.absoluteError)
 
         // Error scales linearly with input errors
-        // n=3, mean=2, deviations=[-1, 0, 1], sqrt(n-1)=sqrt(2)
-        // scaledDeviations = [-1/sqrt(2), 0, 1/sqrt(2)]
-        // For error=e: scaledErrors = [-e/sqrt(2), 0, e/sqrt(2)]
-        // resultError = norm2 = sqrt(2 * (e/sqrt(2))^2) = e
-        #expect(abs(smallResult!.absoluteError - 0.01) < 1e-10)
-        #expect(abs(largeResult!.absoluteError - 1.0) < 1e-10)
+        // n=3, mean=2, sigma=1, derivatives are ±0.5
+        // For error=e: resultError = sqrt(2 * (0.5e)^2) = e/sqrt(2)
+        #expect(abs(smallResult!.absoluteError - (0.01 / sqrt(2.0))) < 1e-10)
+        #expect(abs(largeResult!.absoluteError - (1.0 / sqrt(2.0))) < 1e-10)
     }
 
     @Test func uncertainValueSampleStdDevZeroInputErrors() {
@@ -326,6 +321,63 @@ struct UncertainValueStatisticsExtensionTests {
         #expect(result!.absoluteError == 0.0)
         // But value should still be computed
         #expect(result!.value == expected!)
+    }
+
+    @Test func uncertainValueSampleStdDevErrorPropagationMatchesNumericalDerivatives() throws {
+        let baseValues = [10.0, 20.0, 30.0]
+        let errors = [1.0, 2.0, 3.0]
+        let values = zip(baseValues, errors).map { UncertainValue($0, absoluteError: $1) }
+        let result = try values.sampleStandardDeviationL2()
+
+        let epsilon = 1e-6
+        var expectedErrorSquared = 0.0
+
+        for index in 0..<baseValues.count {
+            var plus = baseValues
+            plus[index] += epsilon
+            let sigmaPlus = try plus.sampleStandardDeviationL2()
+
+            var minus = baseValues
+            minus[index] -= epsilon
+            let sigmaMinus = try minus.sampleStandardDeviationL2()
+
+            let derivative = (sigmaPlus - sigmaMinus) / (2.0 * epsilon)
+            expectedErrorSquared += derivative * derivative * errors[index] * errors[index]
+        }
+
+        let expectedError = sqrt(expectedErrorSquared)
+        #expect(abs(result.absoluteError - expectedError) < 1e-6)
+    }
+
+    @Test func uncertainValueSampleStdDevHeteroscedasticInputsStayFinite() {
+        let values = [
+            UncertainValue(100.0, absoluteError: 0.5),
+            UncertainValue(101.0, absoluteError: 5.0),
+            UncertainValue(105.0, absoluteError: 0.2),
+            UncertainValue(98.0, absoluteError: 3.0),
+            UncertainValue(97.5, absoluteError: 0.1)
+        ]
+
+        let result = try? values.sampleStandardDeviationL2()
+        #expect(result != nil)
+        #expect(result!.value.isFinite)
+        #expect(result!.absoluteError.isFinite)
+        #expect(result!.absoluteError > 0)
+    }
+
+    @Test func uncertainValueSampleStdDevLargeDynamicRangeStaysFinite() {
+        let values = [
+            UncertainValue(1.2e3, absoluteError: 3.0),
+            UncertainValue(2.5e6, absoluteError: 120.0),
+            UncertainValue(4.9e8, absoluteError: 9.5e4),
+            UncertainValue(7.7e9, absoluteError: 2.2e6)
+        ]
+
+        let result = try? values.sampleStandardDeviationL2()
+        #expect(result != nil)
+        #expect(result!.value.isFinite)
+        #expect(result!.absoluteError.isFinite)
+        #expect(result!.absoluteError >= 0)
     }
 
     // MARK: - Cross-validation Tests
