@@ -25,6 +25,12 @@ enum ChartConstants {
         static let doubleTapCount: Int = 2
     }
 
+    enum Scale {
+        /// Decades shown below the upper bound when a log axis has to
+        /// replace a non-positive lower domain bound.
+        static let fallbackDecadeSpan: Double = 6
+    }
+
     enum Export {
         static let imageScale: CGFloat = 1.0
     }

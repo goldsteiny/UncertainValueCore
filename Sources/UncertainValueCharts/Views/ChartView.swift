@@ -68,7 +68,7 @@ public struct ChartView: View {
     }
 
     private var plotConfig: ChartConfiguration {
-        config.applying(viewport: renderedViewport)
+        config.applying(viewport: renderedViewport).sanitizedForScales()
     }
 
     private var interactivePlot: some View {
@@ -140,13 +140,17 @@ public struct ChartView: View {
         let panned = ChartViewportGestures.panned(
             from: base,
             translation: gestureTranslation,
-            plotSize: plotSize
+            plotSize: plotSize,
+            xScale: config.xAxis.scale,
+            yScale: config.yAxis.scale
         )
 
         return ChartViewportGestures.zoomed(
             from: panned,
             magnification: gestureMagnification,
-            minimumSpan: config.style.minimumDomainSpan
+            minimumSpan: config.style.minimumDomainSpan,
+            xScale: config.xAxis.scale,
+            yScale: config.yAxis.scale
         )
     }
 
@@ -170,13 +174,17 @@ public struct ChartView: View {
             let panned = ChartViewportGestures.panned(
                 from: start,
                 translation: translation,
-                plotSize: plotSize
+                plotSize: plotSize,
+                xScale: config.xAxis.scale,
+                yScale: config.yAxis.scale
             )
 
             let zoomed = ChartViewportGestures.zoomed(
                 from: panned,
                 magnification: magnification,
-                minimumSpan: config.style.minimumDomainSpan
+                minimumSpan: config.style.minimumDomainSpan,
+                xScale: config.xAxis.scale,
+                yScale: config.yAxis.scale
             )
 
             viewport = zoomed

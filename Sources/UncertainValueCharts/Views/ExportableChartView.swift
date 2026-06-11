@@ -15,6 +15,10 @@ public struct ExportableChartView: View {
         self.config = config
     }
 
+    private var plotConfig: ChartConfiguration {
+        config.sanitizedForScales()
+    }
+
     public var body: some View {
         let exportStyle = config.style.exportStyle
 
@@ -25,8 +29,8 @@ public struct ExportableChartView: View {
                     .foregroundColor(.black)
             }
 
-            Chart { chartMarks(config: config, style: config.style.markStyles.export) }
-                .applyChartDomains(xAxis: config.xAxis, yAxis: config.yAxis)
+            Chart { chartMarks(config: plotConfig, style: config.style.markStyles.export) }
+                .applyChartDomains(xAxis: plotConfig.xAxis, yAxis: plotConfig.yAxis)
                 .chartPlotStyle { $0.clipped() }
                 .chartXAxis { exportXAxisMarks }
                 .chartYAxis { exportYAxisMarks }

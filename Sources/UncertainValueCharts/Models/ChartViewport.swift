@@ -4,6 +4,11 @@
 //
 //  Viewport model for chart pan/zoom.
 //
+//  Domains are always stored in data space. Pan, zoom, fit, and padding
+//  math runs in axis-position space (see `ChartAxisScale`), so it stays
+//  linear for any on-screen scale: panning a log axis shifts decades,
+//  padding a log axis is multiplicative.
+//
 
 import CoreGraphics
 import Foundation
@@ -39,37 +44,69 @@ public struct ChartViewport: Equatable, Sendable {
         )
     }
 
-    public func panned(translation: CGSize, plotSize: CGSize) -> ChartViewport {
+    public func panned(
+        translation: CGSize,
+        plotSize: CGSize,
+        xScale: ChartAxisScale = .linear,
+        yScale: ChartAxisScale = .linear
+    ) -> ChartViewport {
         guard plotSize.width > 0, plotSize.height > 0 else { return self }
-        guard xSpan.isFinite, ySpan.isFinite, xSpan > 0, ySpan > 0 else { return self }
+        guard let xPositions = usablePositionRange(of: xDomain, scale: xScale),
+              let yPositions = usablePositionRange(of: yDomain, scale: yScale) else { return self }
 
-        let deltaX = -Double(translation.width / plotSize.width) * xSpan
-        let deltaY = Double(translation.height / plotSize.height) * ySpan
-        return shifted(deltaX: deltaX, deltaY: deltaY)
+        let deltaX = -Double(translation.width / plotSize.width) * xPositions.span
+        let deltaY = Double(translation.height / plotSize.height) * yPositions.span
+        return ChartViewport(
+            xDomain: xScale.domain(fromPositionRange: xPositions.shifted(by: deltaX)),
+            yDomain: yScale.domain(fromPositionRange: yPositions.shifted(by: deltaY))
+        )
     }
 
-    public func zoomed(magnification: Double, minimumSpan: Double) -> ChartViewport {
+    public func zoomed(
+        magnification: Double,
+        minimumSpan: Double,
+        xScale: ChartAxisScale = .linear,
+        yScale: ChartAxisScale = .linear
+    ) -> ChartViewport {
         guard magnification.isFinite, magnification > 0 else { return self }
-        guard xSpan.isFinite, ySpan.isFinite, xSpan > 0, ySpan > 0 else { return self }
+        guard let xPositions = usablePositionRange(of: xDomain, scale: xScale),
+              let yPositions = usablePositionRange(of: yDomain, scale: yScale) else { return self }
 
-        let newXSpan = max(xSpan / magnification, minimumSpan)
-        let newYSpan = max(ySpan / magnification, minimumSpan)
-        return ChartViewport(centerX: xCenter, centerY: yCenter, xSpan: newXSpan, ySpan: newYSpan)
+        return ChartViewport(
+            xDomain: xScale.domain(fromPositionRange: xPositions.zoomed(by: magnification, minimumSpan: minimumSpan)),
+            yDomain: yScale.domain(fromPositionRange: yPositions.zoomed(by: magnification, minimumSpan: minimumSpan))
+        )
     }
 
-    public static func fitToData(series: [ChartSeries], style: ChartStyle = .default) -> ChartViewport? {
-        guard let bounds = ChartDataBounds(series: series) else { return nil }
+    public static func fitToData(
+        series: [ChartSeries],
+        style: ChartStyle = .default,
+        xScale: ChartAxisScale = .linear,
+        yScale: ChartAxisScale = .linear
+    ) -> ChartViewport? {
+        guard let bounds = ChartDataBounds(series: series, xScale: xScale, yScale: yScale) else { return nil }
 
-        let xDomain = bounds.xRange.padded(
+        guard let xDomain = bounds.xRange.padded(
             by: style.domainPaddingFraction,
-            minimumSpan: style.minimumDomainSpan
-        )
-        let yDomain = bounds.yRange.padded(
+            minimumSpan: style.minimumDomainSpan,
+            scale: xScale
+        ), let yDomain = bounds.yRange.padded(
             by: style.domainPaddingFraction,
-            minimumSpan: style.minimumDomainSpan
-        )
+            minimumSpan: style.minimumDomainSpan,
+            scale: yScale
+        ) else { return nil }
 
         return ChartViewport(xDomain: xDomain, yDomain: yDomain)
+    }
+
+    /// Position-space image of a domain, requiring a positive, finite span.
+    private func usablePositionRange(
+        of domain: ClosedRange<Double>,
+        scale: ChartAxisScale
+    ) -> ClosedRange<Double>? {
+        guard let positions = scale.positionRange(of: domain),
+              positions.span.isFinite, positions.span > 0 else { return nil }
+        return positions
     }
 }
 
@@ -77,12 +114,14 @@ private struct ChartDataBounds {
     let xRange: ClosedRange<Double>
     let yRange: ClosedRange<Double>
 
-    init?(series: [ChartSeries]) {
-        let points = series.flatMap(\.points)
+    init?(series: [ChartSeries], xScale: ChartAxisScale, yScale: ChartAxisScale) {
+        let points = series.flatMap(\.points).filter { point in
+            xScale.isRepresentable(point.x.value) && yScale.isRepresentable(point.y.value)
+        }
         guard !points.isEmpty else { return nil }
 
-        let xValues = points.flatMap { $0.x.finiteBoundsIncludingValue }
-        let yValues = points.flatMap { $0.y.finiteBoundsIncludingValue }
+        let xValues = points.flatMap { $0.x.finiteBoundsIncludingValue.filter(xScale.isRepresentable) }
+        let yValues = points.flatMap { $0.y.finiteBoundsIncludingValue.filter(yScale.isRepresentable) }
         guard let xRange = xValues.range, let yRange = yValues.range else { return nil }
         guard xRange.isFiniteRange, yRange.isFiniteRange else { return nil }
 
@@ -117,9 +156,20 @@ private extension ClosedRange where Bound == Double {
         lowerBound.isFinite && upperBound.isFinite
     }
 
-    func padded(by fraction: Double, minimumSpan: Double) -> ClosedRange<Double> {
-        let baseSpan = Swift.max(span, minimumSpan)
+    func shifted(by delta: Double) -> ClosedRange<Double> {
+        (lowerBound + delta)...(upperBound + delta)
+    }
+
+    func zoomed(by magnification: Double, minimumSpan: Double) -> ClosedRange<Double> {
+        let newHalfSpan = Swift.max(span / magnification, minimumSpan) / 2.0
+        return (center - newHalfSpan)...(center + newHalfSpan)
+    }
+
+    /// Pads in position space: linear axes pad additively, log axes multiplicatively.
+    func padded(by fraction: Double, minimumSpan: Double, scale: ChartAxisScale) -> ClosedRange<Double>? {
+        guard let positions = scale.positionRange(of: self) else { return nil }
+        let baseSpan = Swift.max(positions.span, minimumSpan)
         let halfSpan = baseSpan * (0.5 + fraction)
-        return (center - halfSpan)...(center + halfSpan)
+        return scale.domain(fromPositionRange: (positions.center - halfSpan)...(positions.center + halfSpan))
     }
 }

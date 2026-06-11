@@ -384,3 +384,176 @@ private func isRangeApproximatelyEqual(
     isApproximatelyEqual(actual.lowerBound, expected.lowerBound, accuracy: accuracy)
         && isApproximatelyEqual(actual.upperBound, expected.upperBound, accuracy: accuracy)
 }
+
+struct ChartAxisScaleTests {
+    @Test func linearScaleIsIdentity() {
+        #expect(ChartAxisScale.linear.position(of: 3.5) == 3.5)
+        #expect(ChartAxisScale.linear.value(atPosition: -2.0) == -2.0)
+        #expect(ChartAxisScale.linear.isRepresentable(-5.0))
+        #expect(!ChartAxisScale.linear.isRepresentable(.infinity))
+    }
+
+    @Test func log10ScaleMapsDecadesAndRoundTrips() {
+        let scale = ChartAxisScale.log10
+
+        #expect(isApproximatelyEqual(scale.position(of: 100.0) ?? .nan, 2.0))
+        #expect(isApproximatelyEqual(scale.value(atPosition: 3.0), 1000.0, accuracy: 1e-9))
+
+        let value = 7.3
+        let roundTripped = scale.value(atPosition: scale.position(of: value) ?? .nan)
+        #expect(isApproximatelyEqual(roundTripped, value, accuracy: 1e-9))
+    }
+
+    @Test func log10ScaleRejectsNonPositiveValues() {
+        #expect(!ChartAxisScale.log10.isRepresentable(0.0))
+        #expect(!ChartAxisScale.log10.isRepresentable(-1.0))
+        #expect(ChartAxisScale.log10.position(of: 0.0) == nil)
+        #expect(ChartAxisScale.log10.positionRange(of: -1.0...10.0) == nil)
+    }
+
+    @Test func renderableDomainTruncatesNonPositiveLowerBound() {
+        let truncated = ChartAxisScale.log10.renderableDomain(of: -5.0...100.0)
+        #expect(truncated != nil)
+        if let truncated {
+            #expect(truncated.lowerBound > 0)
+            #expect(isApproximatelyEqual(truncated.upperBound, 100.0))
+        }
+
+        #expect(ChartAxisScale.log10.renderableDomain(of: -5.0...0.0) == nil)
+        #expect(ChartAxisScale.linear.renderableDomain(of: -5.0...0.0) == -5.0...0.0)
+    }
+}
+
+struct ChartViewportLogScaleTests {
+    @Test func fitToDataOnLogAxisExcludesNonPositiveValuesAndPadsInDecades() {
+        let points = [
+            ChartPoint(x: ChartValue(1.0), y: ChartValue(1.0)),
+            ChartPoint(x: ChartValue(100.0), y: ChartValue(10.0)),
+            ChartPoint(x: ChartValue(-4.0), y: ChartValue(5.0))
+        ]
+        let series = ChartSeries(label: "Series", color: .blue, points: points)
+        let style = ChartStyle.default
+
+        let viewport = ChartViewport.fitToData(series: [series], style: style, xScale: .log10)
+        #expect(viewport != nil)
+        guard let viewport else { return }
+
+        // x positions span 0...2 decades; padding fraction 0.05 widens to -0.1...2.1.
+        let expectedX = pow(10.0, -0.1)...pow(10.0, 2.1)
+        #expect(isRangeApproximatelyEqual(viewport.xDomain, expected: expectedX, accuracy: 1e-6))
+
+        // The excluded point's y value no longer constrains the y fit.
+        let expectedY = expectedDomain(min: 1.0, max: 10.0, style: style)
+        #expect(isRangeApproximatelyEqual(viewport.yDomain, expected: expectedY, accuracy: 1e-6))
+    }
+
+    @Test func fitToDataIgnoresNonPositiveErrorBoundsOnLogAxis() {
+        let points = [
+            ChartPoint(
+                x: ChartValue(value: 10.0, lowerBound: -1.0, upperBound: 20.0),
+                y: ChartValue(1.0)
+            )
+        ]
+        let series = ChartSeries(label: "Series", color: .blue, points: points)
+
+        let viewport = ChartViewport.fitToData(series: [series], xScale: .log10)
+        #expect(viewport != nil)
+        guard let viewport else { return }
+
+        #expect(viewport.xDomain.lowerBound > 0)
+    }
+
+    @Test func panOnLogAxisShiftsDecades() {
+        let start = ChartViewport(xDomain: 1.0...100.0, yDomain: 0.0...10.0)
+
+        let panned = start.panned(
+            translation: CGSize(width: -50.0, height: 0.0),
+            plotSize: CGSize(width: 100.0, height: 100.0),
+            xScale: .log10
+        )
+
+        #expect(isRangeApproximatelyEqual(panned.xDomain, expected: 10.0...1000.0, accuracy: 1e-6))
+        #expect(isRangeApproximatelyEqual(panned.yDomain, expected: 0.0...10.0))
+    }
+
+    @Test func zoomOnLogAxisKeepsGeometricCenter() {
+        let start = ChartViewport(xDomain: 1.0...10000.0, yDomain: 0.0...10.0)
+
+        let zoomed = start.zoomed(magnification: 2.0, minimumSpan: 0.001, xScale: .log10)
+
+        // Positions 0...4 zoomed ×2 around center 2 give 1...3 → 10...1000.
+        #expect(isRangeApproximatelyEqual(zoomed.xDomain, expected: 10.0...1000.0, accuracy: 1e-6))
+    }
+}
+
+struct ChartScaleSanitizingTests {
+    @Test func sanitizerDropsNonRepresentablePointsAndClampsErrorBounds() {
+        let points = [
+            ChartPoint(
+                x: ChartValue(5.0),
+                y: ChartValue(value: 10.0, lowerBound: -2.0, upperBound: 20.0)
+            ),
+            ChartPoint(x: ChartValue(6.0), y: ChartValue(-3.0))
+        ]
+        let series = ChartSeries(label: "Series", color: .blue, points: points)
+        let config = ChartConfiguration(
+            series: [series],
+            xAxis: ChartAxisConfiguration(domain: 0.0...10.0),
+            yAxis: ChartAxisConfiguration(domain: 0.5...100.0, scale: .log10)
+        )
+
+        let sanitized = config.sanitizedForScales()
+
+        #expect(sanitized.series.first?.points.count == 1)
+        let yValue = sanitized.series.first?.points.first?.y
+        #expect(yValue?.value == 10.0)
+        #expect(yValue?.lowerBound == 0.5)
+        #expect(yValue?.upperBound == 20.0)
+    }
+
+    @Test func sanitizerSplitsOverlaySegmentsAtNonRepresentableVertices() {
+        let segment = ChartOverlaySegment(points: [
+            CGPoint(x: 1.0, y: 1.0),
+            CGPoint(x: 2.0, y: 2.0),
+            CGPoint(x: 3.0, y: -1.0),
+            CGPoint(x: 4.0, y: 4.0),
+            CGPoint(x: 5.0, y: 5.0)
+        ])
+        let line = ChartOverlayLine(label: "Line", color: .red, segments: [segment])
+        let config = ChartConfiguration(
+            series: [],
+            overlays: [line],
+            yAxis: ChartAxisConfiguration(scale: .log10)
+        )
+
+        let sanitized = config.sanitizedForScales()
+
+        #expect(sanitized.overlays.first?.segments.count == 2)
+        #expect(sanitized.overlays.first?.segments.first?.points.count == 2)
+    }
+
+    @Test func sanitizerClampsBandsToLogXAxisDomainFloor() {
+        let band = ChartOverlayBand(label: "Band", color: .blue, xRange: -5.0...50.0)
+        let config = ChartConfiguration(
+            series: [],
+            overlayBands: [band],
+            xAxis: ChartAxisConfiguration(domain: 1.0...100.0, scale: .log10)
+        )
+
+        let sanitized = config.sanitizedForScales()
+
+        #expect(sanitized.overlayBands.first?.xRange == 1.0...50.0)
+    }
+
+    @Test func linearConfigurationPassesThroughUnchanged() {
+        let series = makeSeries(
+            label: "Series",
+            points: [ChartPoint(x: ChartValue(-5.0), y: ChartValue(-7.0))]
+        )
+        let config = ChartConfiguration(series: [series])
+
+        let sanitized = config.sanitizedForScales()
+
+        #expect(sanitized == config)
+    }
+}

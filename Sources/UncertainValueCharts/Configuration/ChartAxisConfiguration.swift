@@ -13,15 +13,18 @@ public struct ChartAxisConfiguration: Sendable, Equatable {
     public var label: String
     public var domain: ClosedRange<Double>?
     public var gridLineCount: Int
+    public var scale: ChartAxisScale
 
     public init(
         label: String = "",
         domain: ClosedRange<Double>? = nil,
-        gridLineCount: Int = ChartDefaults.Axis.gridLineCount
+        gridLineCount: Int = ChartDefaults.Axis.gridLineCount,
+        scale: ChartAxisScale = .linear
     ) {
         self.label = label
         self.domain = domain
         self.gridLineCount = gridLineCount
+        self.scale = scale
     }
 
     public func withDomain(_ domain: ClosedRange<Double>?) -> ChartAxisConfiguration {
